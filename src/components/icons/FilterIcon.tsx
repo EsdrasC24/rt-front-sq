@@ -1,5 +1,7 @@
 import { SvgIcon } from '@mui/material';
-import type { SvgIconProps } from '@mui/material';
+import type { ComponentProps } from 'react';
+
+type SvgIconProps = ComponentProps<typeof SvgIcon>;
 
 const FilterIcon = (props: SvgIconProps) => {
   return (
