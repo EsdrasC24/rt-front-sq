@@ -1,8 +1,11 @@
-import { Box, Typography, Button, Container } from '@mui/material';
+import { Box, Typography, Container } from '@mui/material';
 import bgImage from '../assets/bg.png';
 import logoImage from '../assets/logo.png';
+import { useNavigationStore } from '../store/useNavigationStore';
+import Button from './Button';
 
 const Welcome = () => {
+  const navigateToHome = useNavigationStore((state) => state.navigateToHome);
   return (
     <Box
       sx={{
@@ -114,45 +117,7 @@ const Welcome = () => {
             px: { xs: 1, sm: 0 },
           }}
         >
-          <Button
-            variant="contained"
-            size="large"
-            sx={{
-              fontFamily: 'Montserrat',
-              fontWeight: 700,
-              fontStyle: 'normal',
-              fontSize: { xs: '12px', sm: '13px', md: '14px' },
-              lineHeight: '20px',
-              letterSpacing: '0%',
-              textAlign: 'center',
-              backgroundColor: '#8BC547',
-              color: '#354E18',
-              padding: { 
-                xs: '12px 32px', 
-                sm: '13px 40px', 
-                md: '14px 48px' 
-              },
-              borderRadius: '50px',
-              textTransform: 'none',
-              boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.2)',
-              border: 'none',
-              minWidth: { xs: '140px', sm: '150px', md: '160px' },
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              '&:hover': {
-                backgroundColor: '#7AB63A',
-                color: '#354E18',
-                transform: 'translateY(-2px)',
-                boxShadow: '0px 6px 16px rgba(0, 0, 0, 0.3)',
-              },
-              '&:active': {
-                transform: 'translateY(0px)',
-                boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.2)',
-              },
-              transition: 'all 0.2s ease',
-            }}
-          >
+          <Button onClick={navigateToHome}>
             Comenzar
           </Button>
         </Box>
