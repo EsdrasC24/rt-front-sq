@@ -3,7 +3,6 @@ import FilterIcon from './icons/FilterIcon';
 import { useState } from 'react';
 import FilterModal from './FilterModal';
 import { useFilterStore } from '../store/useFilterStore';
-import { useFavoritesStore } from '../store/useFavoritesStore';
 
 /**
  * Filter Tabs component for filtering between "Todos" and "Favoritos" characters
@@ -11,10 +10,8 @@ import { useFavoritesStore } from '../store/useFavoritesStore';
  */
 const FilterTabs = () => {
   const { currentTab, setCurrentTab, hasActiveFilters } = useFilterStore();
-  const { getFavoritesCount } = useFavoritesStore();
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
-  const favoritesCount = getFavoritesCount();
   const hasFilters = hasActiveFilters();
 
   const handleTabChange = (tab: 'todos' | 'favoritos') => {
