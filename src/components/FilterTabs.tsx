@@ -9,10 +9,8 @@ import { useFilterStore } from '../store/useFilterStore';
  * Features active filter highlighting and additional filter options
  */
 const FilterTabs = () => {
-  const { currentTab, setCurrentTab, hasActiveFilters } = useFilterStore();
+  const { currentTab, setCurrentTab } = useFilterStore();
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-
-  const hasFilters = hasActiveFilters();
 
   const handleTabChange = (tab: 'todos' | 'favoritos') => {
     setCurrentTab(tab);
@@ -71,8 +69,8 @@ const FilterTabs = () => {
             height: '32px',
             flex: 1,
             transition: 'all 0.3s ease',
-            backgroundColor: currentTab === 'todos' ? '#8BC34A' : 'transparent',
-            color: currentTab === 'todos' ? '#ffffff' : '#666666',
+            backgroundColor: currentTab === 'todos' ? '#B6DA8B' : 'transparent',
+            color: currentTab === 'todos' ? '#354E18' : '#5E6573',
             boxShadow: 'none',
             '&:hover': {
               backgroundColor: currentTab === 'todos' ? '#7CB342' : 'rgba(0, 0, 0, 0.04)',
@@ -100,7 +98,7 @@ const FilterTabs = () => {
             flex: 1,
             transition: 'all 0.3s ease',
             backgroundColor: currentTab === 'favoritos' ? '#8BC34A' : 'transparent',
-            color: currentTab === 'favoritos' ? '#ffffff' : '#666666',
+            color: currentTab === 'favoritos' ? '#354E18' : '#666666',
             boxShadow: 'none',
             '&:hover': {
               backgroundColor: currentTab === 'favoritos' ? '#7CB342' : 'rgba(0, 0, 0, 0.04)',
@@ -143,22 +141,6 @@ const FilterTabs = () => {
             fontSize: { xs: '22px', sm: '24px', md: '26px' },
           }} 
         />
-        
-        {/* Active filters indicator */}
-        {hasFilters && (
-          <Box
-            sx={{
-              position: 'absolute',
-              top: 4,
-              right: 4,
-              width: 8,
-              height: 8,
-              backgroundColor: '#8BC34A',
-              borderRadius: '50%',
-              border: '2px solid white',
-            }}
-          />
-        )}
       </Box>
 
       {/* Filter Modal */}

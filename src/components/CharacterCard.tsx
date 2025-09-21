@@ -75,7 +75,9 @@ const CharacterCard = ({ character, onFavoriteChange, onClick }: CharacterCardPr
 
   const handleFavoriteClick = (event: React.MouseEvent) => {
     event.stopPropagation(); // Prevent card click when clicking favorite
+    console.log('CharacterCard - Before toggle:', character.id, isCharacterFavorite);
     toggleFavorite(character.id);
+    console.log('CharacterCard - After toggle:', character.id, isFavorite(character.id));
     if (onFavoriteChange) {
       onFavoriteChange(character.id, !isCharacterFavorite);
     }

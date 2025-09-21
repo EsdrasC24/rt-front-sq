@@ -1,4 +1,5 @@
 import { Box, IconButton } from '@mui/material';
+import type { SxProps, Theme } from '@mui/material/styles';
 import { Close as CloseIcon } from '@mui/icons-material';
 import type { ReactNode } from 'react';
 
@@ -29,13 +30,17 @@ interface BadgeProps {
    * @default 'default'
    */
   variant?: 'default' | 'species' | 'status';
+  /**
+   * Additional custom styles for the badge
+   */
+  sx?: SxProps<Theme>;
 }
 
 /**
  * Badge component for displaying content with optional icons and remove functionality
  * Supports different visual variants and flexible icon positioning
  */
-const Badge = ({ children, preIcon, postIcon, removable = false, onRemove, variant = 'default' }: BadgeProps) => {
+const Badge = ({ children, preIcon, postIcon, removable = false, onRemove, variant = 'default', sx }: BadgeProps) => {
   // Define styling based on variant
   const getVariantStyles = () => {
     switch (variant) {
@@ -82,6 +87,7 @@ const Badge = ({ children, preIcon, postIcon, removable = false, onRemove, varia
             backgroundColor: variant === 'species' ? '#d4edd4' : 
                            variant === 'status' ? '#ffe0b2' : '#eeeeee',
           },
+          ...sx,
         }}
       >
         {/* Pre Icon */}
@@ -136,6 +142,7 @@ const Badge = ({ children, preIcon, postIcon, removable = false, onRemove, varia
           backgroundColor: variant === 'species' ? '#d4edd4' : 
                          variant === 'status' ? '#ffe0b2' : '#eeeeee',
         },
+        ...sx,
       }}
     >
       {/* Pre Icon */}

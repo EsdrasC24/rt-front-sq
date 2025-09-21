@@ -1,17 +1,13 @@
 import { Box, Typography, IconButton } from '@mui/material';
-import { Star, StarBorder } from '@mui/icons-material';
-import { useState } from 'react';
 import type { Character } from '../services';
+import StarIcon from './icons/StarIcon';
+import { useFavoritesStore } from '../store/useFavoritesStore';
 
 interface RelatedCharacterCardProps {
   /**
    * Character data for the related character card
    */
   character: Character;
-  /**
-   * Whether the character is initially favorited
-   */
-  initialFavorite?: boolean;
   /**
    * Callback when favorite status changes
    */
@@ -28,18 +24,22 @@ interface RelatedCharacterCardProps {
  */
 const RelatedCharacterCard = ({ 
   character, 
-  initialFavorite = false, 
   onFavoriteChange,
   onClick 
 }: RelatedCharacterCardProps) => {
-  const [isFavorite, setIsFavorite] = useState(initialFavorite);
+  // Use favorites store instead of local state
+  const { isFavorite, toggleFavorite } = useFavoritesStore();
+  const isCharacterFavorite = isFavorite(character.id);
+
+  console.log(`RelatedCharacterCard rendered for ${character.name} (ID: ${character.id}), isFavorite: ${isCharacterFavorite}`);
 
   const handleFavoriteClick = (event: React.MouseEvent) => {
     event.stopPropagation(); // Prevent triggering card click
-    const newFavoriteStatus = !isFavorite;
-    setIsFavorite(newFavoriteStatus);
+    console.log('RelatedCharacterCard - Before toggle:', character.id, isCharacterFavorite);
+    toggleFavorite(character.id);
+    console.log('RelatedCharacterCard - After toggle:', character.id, isFavorite(character.id));
     if (onFavoriteChange) {
-      onFavoriteChange(character.id, newFavoriteStatus);
+      onFavoriteChange(character.id, !isCharacterFavorite);
     }
   };
 
@@ -63,7 +63,7 @@ const RelatedCharacterCard = ({
         flexDirection: 'column',
         minWidth: '140px',
         width: '100%',
-        maxWidth: '160px',
+        maxWidth: '200px',
         '&:hover': {
           boxShadow: '0px 4px 16px rgba(0, 0, 0, 0.15)',
           transform: 'translateY(-2px)',
@@ -102,18 +102,19 @@ const RelatedCharacterCard = ({
           <IconButton
             onClick={handleFavoriteClick}
             sx={{
-              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+              backgroundColor: isCharacterFavorite ? '#B6DA8B' : 'rgba(255, 255, 255, 0.9)',
               width: '28px',
               height: '28px',
+              transition: 'all 0.3s ease',
               '&:hover': {
-                backgroundColor: 'rgba(255, 255, 255, 1)',
+                backgroundColor: isCharacterFavorite ? '#A5C97A' : 'rgba(255, 255, 255, 1)',
               },
             }}
           >
-            {isFavorite ? (
-              <Star sx={{ color: '#8BC34A', fontSize: '16px' }} />
+            {isCharacterFavorite ? (
+              <StarIcon sx={{ fontSize: '15px' }} />
             ) : (
-              <StarBorder sx={{ color: '#666666', fontSize: '16px' }} />
+              <StarIcon sx={{ color: '#808C73', fontSize: '15px' }} />
             )}
           </IconButton>
         </Box>

@@ -6,6 +6,7 @@ import FilterTabs from '../components/FilterTabs';
 import CharacterCard from '../components/CharacterCard';
 import { CharacterDetailModal } from '../components/CharacterDetailModal';
 import Badge from '../components/Badge';
+import Button from '../components/Button';
 import { useCharacters } from '../hooks';
 import { useFilterStore } from '../store/useFilterStore';
 import { useFavoritesStore } from '../store/useFavoritesStore';
@@ -344,21 +345,20 @@ const Home = () => {
                   >
                     ¡Pareces perdido en tu viaje!
                   </Typography>
-                  <Box
-                    component="button"
+                  <Button
                     onClick={clearAllFilters}
                     sx={{
                       backgroundColor: '#8BC34A',
                       color: '#ffffff',
-                      border: 'none',
                       borderRadius: '25px',
                       padding: '12px 32px',
                       fontSize: '16px',
                       fontWeight: 600,
-                      fontFamily: 'Montserrat, sans-serif',
                       cursor: 'pointer',
                       transition: 'all 0.3s ease',
                       boxShadow: '0 4px 12px rgba(139, 195, 74, 0.3)',
+                      width: 'auto', // Override fixed width from Button component
+                      height: 'auto', // Override fixed height from Button component
                       '&:hover': {
                         backgroundColor: '#7CB342',
                         transform: 'translateY(-2px)',
@@ -370,7 +370,7 @@ const Home = () => {
                     }}
                   >
                     Limpiar filtros
-                  </Box>
+                  </Button>
                 </>
               ) : (
                 // Default empty state (no filters applied)
@@ -409,29 +409,31 @@ const Home = () => {
               padding: '20px',
             }}
           >
-            <Box
-              component="button"
+            <Button
               onClick={loadMore}
               disabled={loading}
               sx={{
-                backgroundColor: '#8BC34A',
-                color: '#ffffff',
-                border: 'none',
                 borderRadius: '8px',
                 padding: '12px 24px',
                 fontSize: '14px',
                 fontWeight: 500,
-                fontFamily: 'Montserrat, sans-serif',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 opacity: loading ? 0.6 : 1,
                 transition: 'all 0.3s ease',
+                width: 'auto', // Override fixed width from Button component
+                height: 'auto', // Override fixed height from Button component
                 '&:hover': {
-                  backgroundColor: loading ? '#8BC34A' : '#7CB342',
+                  backgroundColor: loading ? '#B6DA8B' : '#7CB342',
+                },
+                '&:disabled': {
+                  backgroundColor: '#B6DA8B',
+                  color: '#ffffff',
+                  opacity: 0.6,
                 },
               }}
             >
               {loading ? 'Cargando...' : 'Cargar más'}
-            </Box>
+            </Button>
           </Box>
         )}
       </Box>

@@ -42,7 +42,7 @@ export class EpisodeService {
    * Example: "https://rickandmortyapi.com/api/episode/1" -> 1
    */
   extractEpisodeId(episodeUrl: string): number | null {
-    const match = episodeUrl.match(/\/episode\/(\d+)$/);
+    const match = episodeUrl.match(/\/episode\/(\d+)\/?$/);
     return match ? parseInt(match[1], 10) : null;
   }
 
