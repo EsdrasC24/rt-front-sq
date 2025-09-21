@@ -2,8 +2,10 @@ import React from 'react';
 import type { ReactElement } from 'react';
 import { render } from '@testing-library/react';
 import type { RenderOptions, RenderResult } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
+import { MemoryRouter } from 'react-router-dom';
 import userEvent from '@testing-library/user-event';
 import theme from '../../theme/theme';
 
@@ -24,6 +26,26 @@ const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
 };
 
 /**
+ * Provider with Router for testing components that use routing
+ */
+const AllTheProvidersWithRouter = ({ 
+  children, 
+  initialEntries = ['/'] 
+}: { 
+  children: React.ReactNode;
+  initialEntries?: string[];
+}) => {
+  return (
+    <MemoryRouter initialEntries={initialEntries}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        {children}
+      </ThemeProvider>
+    </MemoryRouter>
+  );
+};
+
+/**
  * Custom render function with Material-UI theme
  */
 export const renderWithTheme = (
@@ -31,6 +53,24 @@ export const renderWithTheme = (
   options?: CustomRenderOptions
 ): RenderResult => {
   return render(ui, { wrapper: AllTheProviders, ...options });
+};
+
+/**
+ * Custom render function with Material-UI theme and React Router
+ */
+export const renderWithRouter = (
+  ui: ReactElement,
+  options?: CustomRenderOptions
+): RenderResult => {
+  const { initialEntries = ['/'], ...renderOptions } = options || {};
+  
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+    <AllTheProvidersWithRouter initialEntries={initialEntries}>
+      {children}
+    </AllTheProvidersWithRouter>
+  );
+  
+  return render(ui, { wrapper: Wrapper, ...renderOptions });
 };
 
 /**
@@ -42,6 +82,22 @@ export const renderWithThemeAndUser = (
 ) => {
   const user = userEvent.setup();
   const result = renderWithTheme(ui, options);
+  
+  return {
+    user,
+    ...result,
+  };
+};
+
+/**
+ * Custom render function with Material-UI theme, React Router, and user event setup
+ */
+export const renderWithRouterAndUser = (
+  ui: ReactElement,
+  options?: CustomRenderOptions
+) => {
+  const user = userEvent.setup();
+  const result = renderWithRouter(ui, options);
   
   return {
     user,

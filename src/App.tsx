@@ -1,31 +1,17 @@
 ﻿import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
-import Welcome from './components/Welcome';
-import Home from './pages/Home';
 import theme from './theme/theme';
-import { useNavigationStore } from './store/useNavigationStore';
+import AppRouter from './router/AppRouter';
 
 /**
- * Main App component with Zustand-based navigation
- * Conditionally renders Welcome or Home page based on navigation state
+ * Main App component with React Router navigation
+ * Provides theme and routing configuration for the entire application
  */
 function App() {
-  const currentPage = useNavigationStore((state) => state.currentPage);
-
-  const renderCurrentPage = () => {
-    switch (currentPage) {
-      case 'home':
-        return <Home />;
-      case 'welcome':
-      default:
-        return <Welcome />;
-    }
-  };
-
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      {renderCurrentPage()}
+      <AppRouter />
     </ThemeProvider>
   );
 }

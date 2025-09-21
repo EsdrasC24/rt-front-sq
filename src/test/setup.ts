@@ -1,5 +1,17 @@
 import '@testing-library/jest-dom';
 import './jest-dom.d.ts';
+import { TextEncoder, TextDecoder } from 'util';
+
+// Mock TextEncoder and TextDecoder (required for React Router v7)
+Object.defineProperty(globalThis, 'TextEncoder', {
+  writable: true,
+  value: TextEncoder,
+});
+
+Object.defineProperty(globalThis, 'TextDecoder', {
+  writable: true,
+  value: TextDecoder,
+});
 
 // Mock IntersectionObserver
 Object.defineProperty(window, 'IntersectionObserver', {

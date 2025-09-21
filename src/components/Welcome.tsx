@@ -1,11 +1,16 @@
 import { Box, Typography, Container } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 import bgImage from '../assets/bg.png';
 import logoImage from '../assets/logo.png';
-import { useNavigationStore } from '../store/useNavigationStore';
+import { ROUTES } from '../router';
 import Button from './Button';
 
 const Welcome = () => {
-  const navigateToHome = useNavigationStore((state) => state.navigateToHome);
+  const navigate = useNavigate();
+
+  const handleNavigateToHome = () => {
+    navigate(ROUTES.HOME);
+  };
   return (
     <Box
       sx={{
@@ -117,7 +122,7 @@ const Welcome = () => {
             px: { xs: 1, sm: 0 },
           }}
         >
-          <Button onClick={navigateToHome}>
+          <Button onClick={handleNavigateToHome}>
             Comenzar
           </Button>
         </Box>
