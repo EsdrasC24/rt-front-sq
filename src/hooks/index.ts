@@ -6,3 +6,4 @@
 export { useCharacters } from './useCharacters';
 export { useEpisode } from './useEpisode';
 export { useEpisodeCache } from './useEpisodeCache';
+export * from './useOptimizedStores';
