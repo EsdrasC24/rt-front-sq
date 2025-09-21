@@ -1,33 +1,25 @@
 import { Box, TextField, InputAdornment } from '@mui/material';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import SearchIcon from '../icons/SearchIcon';
 import logoImage from '../../assets/logo.png';
 import bgImage from '../../assets/bg.png';
-import { useFilterStore } from '../../store/useFilterStore';
-
-// Debounce utility function
-function debounce<T extends (...args: any[]) => any>(
-  func: T,
-  delay: number
-): (...args: Parameters<T>) => void {
-  let timeoutId: number;
-  return (...args: Parameters<T>) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => func(...args), delay);
-  };
-}
+import { useSearchTerm, useSetSearchTerm } from '../../hooks';
 
 const Header = () => {
-  const { searchTerm, setSearchTerm } = useFilterStore();
+  const searchTerm = useSearchTerm();
+  const setSearchTerm = useSetSearchTerm();
   const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm);
 
-  // Debounced search implementation
-  const debouncedSetSearchTerm = useCallback(
-    debounce((term: string) => {
-      setSearchTerm(term);
-    }, 300),
-    [setSearchTerm]
-  );
+  // Memoized debounce function to prevent recreation on every render
+  const debouncedSetSearchTerm = useMemo(() => {
+    let timeoutId: NodeJS.Timeout;
+    return (term: string) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        setSearchTerm(term);
+      }, 300);
+    };
+  }, [setSearchTerm]);
 
   // Update local search term when global search term changes
   useEffect(() => {
@@ -35,11 +27,11 @@ const Header = () => {
   }, [searchTerm]);
 
   // Handle search input change
-  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSearchChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
     setLocalSearchTerm(value);
     debouncedSetSearchTerm(value);
-  };
+  }, [debouncedSetSearchTerm]);
 
   return (
     <Box
@@ -132,7 +124,7 @@ const Header = () => {
               ),
               sx: {
                 fontFamily: 'Montserrat',
-                background: 'rgba(15, 28, 6, 0.8)',
+                background: ' #3D403AB2',
                 backgroundBlendMode: 'multiply',
                 borderRadius: '8px',
                 fontSize: { xs: '14px', sm: '15px', md: '16px' },

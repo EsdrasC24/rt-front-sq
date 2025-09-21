@@ -35,7 +35,7 @@ const Welcome = () => {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: '#00000099',
+          background: 'radial-gradient(75.6% 34.91% at 50% 50%, rgba(0, 0, 0, 0.32) 0%, rgba(0, 0, 0, 0.8) 100%)',
           backgroundBlendMode: 'multiply',
           zIndex: 1,
         }}
