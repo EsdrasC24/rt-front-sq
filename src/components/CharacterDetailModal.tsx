@@ -604,8 +604,8 @@ export function CharacterDetailModal({ character, open, onClose }: CharacterDeta
                     '&::-webkit-scrollbar': {
                       display: 'none',
                     },
-                    '-ms-overflow-style': 'none',
-                    'scrollbar-width': 'none',
+                    MsOverflowStyle: 'none',
+                    scrollbarWidth: 'none',
                     scrollBehavior: isDragging ? 'auto' : 'smooth',
                   }}
                 >

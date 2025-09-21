@@ -1,7 +1,7 @@
 import { Box, Typography, IconButton } from '@mui/material';
 import type { Character } from '../services';
 import StarIcon from './icons/StarIcon';
-import { useFavoritesStore } from '../store/useFavoritesStore';
+import { useIsFavorite, useToggleFavorite } from '../hooks';
 
 interface RelatedCharacterCardProps {
   /**
@@ -28,16 +28,12 @@ const RelatedCharacterCard = ({
   onClick 
 }: RelatedCharacterCardProps) => {
   // Use favorites store instead of local state
-  const { isFavorite, toggleFavorite } = useFavoritesStore();
-  const isCharacterFavorite = isFavorite(character.id);
-
-  console.log(`RelatedCharacterCard rendered for ${character.name} (ID: ${character.id}), isFavorite: ${isCharacterFavorite}`);
+  const isCharacterFavorite = useIsFavorite(character.id);
+  const toggleFavorite = useToggleFavorite();
 
   const handleFavoriteClick = (event: React.MouseEvent) => {
     event.stopPropagation(); // Prevent triggering card click
-    console.log('RelatedCharacterCard - Before toggle:', character.id, isCharacterFavorite);
     toggleFavorite(character.id);
-    console.log('RelatedCharacterCard - After toggle:', character.id, isFavorite(character.id));
     if (onFavoriteChange) {
       onFavoriteChange(character.id, !isCharacterFavorite);
     }
