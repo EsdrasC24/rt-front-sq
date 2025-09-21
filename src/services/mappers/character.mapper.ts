@@ -114,7 +114,7 @@ export class CharacterMapper {
         'Humano': 'Human',
         'Cronenbergs': 'Cronenberg',
         'Meeseeks': 'Meeseeks',
-        'Arañas gigantes telépatas': 'Alien',
+        'Arañas gigantes telépatas': 'Giant Spider',
       },
       gender: {
         'Masculino': 'Male',
@@ -124,6 +124,31 @@ export class CharacterMapper {
       status: {
         'Vivo': 'Alive',
         'Muerto': 'Dead',
+      },
+    };
+
+    return mappings[category][value as keyof typeof mappings[typeof category]] || value;
+  }
+
+  /**
+   * Map English values to Spanish for UI display
+   */
+  static mapEnglishToSpanish(category: 'species' | 'gender' | 'status', value: string): string {
+    const mappings = {
+      species: {
+        'Human': 'Humano',
+        'Cronenberg': 'Cronenbergs',
+        'Meeseeks': 'Meeseeks',
+        'Giant Spider': 'Arañas gigantes telépatas',
+      },
+      gender: {
+        'Male': 'Masculino',
+        'Female': 'Femenino',
+        'unknown': 'Desconocido',
+      },
+      status: {
+        'Alive': 'Vivo',
+        'Dead': 'Muerto',
       },
     };
 

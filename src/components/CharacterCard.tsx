@@ -1,10 +1,10 @@
 import { Box, Typography, IconButton } from '@mui/material';
 import { useState, useEffect } from 'react';
-import Badge from './Badge';
-import CheckCircleIcon from './icons/CheckCircleIcon';
+import StatusBadge from './StatusBadge';
 import StarIcon from './icons/StarIcon';
 import { useEpisodeCache } from '../hooks';
-import { useFavoritesStore } from '../store/useFavoritesStore';
+import { useIsFavorite, useToggleFavorite } from '../hooks';
+import { CharacterMapper } from '../services';
 
 interface CharacterCardProps {
   /**
@@ -40,8 +40,8 @@ const CharacterCard = ({ character, onFavoriteChange, onClick }: CharacterCardPr
   const { getFirstEpisodeName } = useEpisodeCache();
   
   // Use favorites store instead of local state
-  const { isFavorite, toggleFavorite } = useFavoritesStore();
-  const isCharacterFavorite = isFavorite(character.id);
+  const isCharacterFavorite = useIsFavorite(character.id);
+  const toggleFavorite = useToggleFavorite();
 
   // Load first episode name
   useEffect(() => {
@@ -75,28 +75,9 @@ const CharacterCard = ({ character, onFavoriteChange, onClick }: CharacterCardPr
 
   const handleFavoriteClick = (event: React.MouseEvent) => {
     event.stopPropagation(); // Prevent card click when clicking favorite
-    console.log('CharacterCard - Before toggle:', character.id, isCharacterFavorite);
     toggleFavorite(character.id);
-    console.log('CharacterCard - After toggle:', character.id, isFavorite(character.id));
     if (onFavoriteChange) {
       onFavoriteChange(character.id, !isCharacterFavorite);
-    }
-  };
-
-  // Get status variant for badge
-  const getStatusVariant = (status: string) => {
-    return status.toLowerCase() === 'alive' ? 'species' : 'status';
-  };
-
-  // Get status in Spanish
-  const getStatusInSpanish = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'alive':
-        return 'Vivo';
-      case 'dead':
-        return 'Muerto';
-      default:
-        return 'Desconocido';
     }
   };
 
@@ -117,7 +98,7 @@ const CharacterCard = ({ character, onFavoriteChange, onClick }: CharacterCardPr
         cursor: 'pointer',
         display: 'flex',
         flexDirection: { xs: 'column', sm: 'row' },
-        height: { xs: 'auto', sm: '140px' },
+        height: { xs: 'auto', sm: '145px' },
         width: { xs: '100%', sm: 'auto' },
         maxWidth: { xs: '300px', sm: 'none' },
         margin: { xs: '0 auto', sm: '0' },
@@ -131,8 +112,8 @@ const CharacterCard = ({ character, onFavoriteChange, onClick }: CharacterCardPr
       <Box
         sx={{
           position: 'relative',
-          width: { xs: '100%', sm: '140px' },
-          height: { xs: '200px', sm: '140px' },
+          width: { xs: '100%', sm: '145px' },
+          height: { xs: '200px', sm: '145px' },
           flexShrink: 0,
           overflow: 'hidden',
         }}
@@ -161,12 +142,12 @@ const CharacterCard = ({ character, onFavoriteChange, onClick }: CharacterCardPr
           <IconButton
             onClick={handleFavoriteClick}
             sx={{
-              backgroundColor: isCharacterFavorite ? '#B6DA8B' : 'rgba(255, 255, 255, 0.9)',
-              width: '32px',
-              height: '32px',
+              backgroundColor: isCharacterFavorite ? '#B6DA8B' : '#FFFFFF',
+              width: '44px',
+              height: '44px',
               transition: 'all 0.3s ease',
               '&:hover': {
-                backgroundColor: isCharacterFavorite ? '#A5C97A' : 'rgba(255, 255, 255, 1)',
+                backgroundColor: isCharacterFavorite ? '#A5C97A' : '#FFFFFF',
               },
             }}
           >
@@ -199,7 +180,6 @@ const CharacterCard = ({ character, onFavoriteChange, onClick }: CharacterCardPr
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'flex-start',
-              marginBottom: '4px',
             }}
           >
             <Typography
@@ -211,19 +191,13 @@ const CharacterCard = ({ character, onFavoriteChange, onClick }: CharacterCardPr
                 color: '#333333',
                 lineHeight: 1.2,
                 flex: 1,
+                marginBottom: 0,
               }}
             >
               {character.name}
             </Typography>
             
-            <Badge
-              variant={getStatusVariant(character.status)}
-              preIcon={getStatusInSpanish(character.status) === 'Vivo' ? (
-                <CheckCircleIcon sx={{ fontSize: '14px' }} />
-              ) : undefined}
-            >
-              {getStatusInSpanish(character.status)}
-            </Badge>
+            <StatusBadge status={character.status} />
           </Box>
 
           {/* Species */}
@@ -231,13 +205,13 @@ const CharacterCard = ({ character, onFavoriteChange, onClick }: CharacterCardPr
             variant="body2"
             sx={{
               fontFamily: 'Montserrat, sans-serif',
-              fontWeight: 400,
+              fontWeight: 500,
               fontSize: '14px',
               color: '#666666',
               marginBottom: '16px',
             }}
           >
-            {character.species}
+            {CharacterMapper.mapEnglishToSpanish('species', character.species)}
           </Typography>
         </Box>
 
@@ -256,23 +230,23 @@ const CharacterCard = ({ character, onFavoriteChange, onClick }: CharacterCardPr
               variant="caption"
               sx={{
                 fontFamily: 'Montserrat, sans-serif',
-                fontWeight: 500,
+                fontWeight: 700,
                 fontSize: '11px',
-                color: '#999999',
+                color: '#808C73',
                 textTransform: 'uppercase',
                 marginBottom: '4px',
                 display: 'block',
               }}
             >
-              Last known location
+              Última ubicación conocida
             </Typography>
             <Typography
               variant="body2"
               sx={{
                 fontFamily: 'Montserrat, sans-serif',
-                fontWeight: 400,
+                fontWeight: 500,
                 fontSize: '13px',
-                color: '#333333',
+                color: '#575B52',
                 lineHeight: 1.3,
               }}
             >
@@ -286,23 +260,23 @@ const CharacterCard = ({ character, onFavoriteChange, onClick }: CharacterCardPr
               variant="caption"
               sx={{
                 fontFamily: 'Montserrat, sans-serif',
-                fontWeight: 500,
+                fontWeight: 700,
                 fontSize: '11px',
-                color: '#999999',
+                color: '#808C73',
                 textTransform: 'uppercase',
                 marginBottom: '4px',
                 display: 'block',
               }}
             >
-              First seen in
+              Primera aparición en
             </Typography>
             <Typography
               variant="body2"
               sx={{
                 fontFamily: 'Montserrat, sans-serif',
-                fontWeight: 400,
+                fontWeight: 500,
                 fontSize: '13px',
-                color: '#333333',
+                color: '#575B52',
                 lineHeight: 1.3,
               }}
             >
