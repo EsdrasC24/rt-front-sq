@@ -62,10 +62,10 @@ export interface ApiResponse<T> {
  */
 export interface CharacterFilters {
   name?: string;
-  status?: CharacterStatus;
-  species?: string;
+  status?: CharacterStatus | CharacterStatus[];
+  species?: string | string[];
   type?: string;
-  gender?: CharacterGender;
+  gender?: CharacterGender | CharacterGender[];
   page?: number;
 }
 
