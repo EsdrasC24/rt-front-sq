@@ -18,7 +18,7 @@ const Button = ({ children, ...props }: CustomButtonProps) => {
       {...props}
       sx={{
         // Dimensions
-        width: '143px',
+        width: '119px',
         height: '44px',
         
         // Padding (spacing/2xs interpreted as 4px)

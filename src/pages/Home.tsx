@@ -8,8 +8,11 @@ import { CharacterDetailModal } from '../components/CharacterDetailModal';
 import Badge from '../components/Badge';
 import Button from '../components/Button';
 import { useCharacters } from '../hooks';
-import { useFilterStore } from '../store/useFilterStore';
-import { useFavoritesStore } from '../store/useFavoritesStore';
+import { 
+  useOptimizedFilters, 
+  useOptimizedFilterActions, 
+  useFavoritesList 
+} from '../hooks';
 import type { Character, CharacterFilters } from '../services';
 
 /**
@@ -17,8 +20,10 @@ import type { Character, CharacterFilters } from '../services';
  * Features the Rick and Morty header with search functionality and footer
  */
 const Home = () => {
-  const { searchTerm, activeFilters, currentTab, removeFilter, setSearchTerm, clearAllFilters } = useFilterStore();
-  const { getFavoritesList } = useFavoritesStore();
+  // Optimized store subscriptions
+  const { searchTerm, activeFilters, currentTab } = useOptimizedFilters();
+  const { removeFilter, setSearchTerm, clearAllFilters, updateFilter } = useOptimizedFilterActions();
+  const favoritesList = useFavoritesList();
   const { 
     characters, 
     loading, 
@@ -59,11 +64,10 @@ const Home = () => {
   // Filter characters for favorites tab
   const displayedCharacters = useMemo(() => {
     if (currentTab === 'favoritos') {
-      const favoriteIds = getFavoritesList();
-      return characters.filter(character => favoriteIds.includes(character.id));
+      return characters.filter(character => favoritesList.includes(character.id));
     }
     return characters;
-  }, [characters, currentTab, getFavoritesList]);
+  }, [characters, currentTab, favoritesList]);
 
   // Function to get filter display value
   const getFilterDisplayValue = (key: keyof CharacterFilters, value: string) => {
@@ -82,17 +86,30 @@ const Home = () => {
   };
 
   // Function to handle filter removal
-  const handleRemoveFilter = (key: keyof CharacterFilters) => {
+  const handleRemoveFilter = (key: keyof CharacterFilters, index?: number) => {
     if (key === 'name') {
       setSearchTerm('');
     } else {
-      removeFilter(key);
+      const currentValue = activeFilters[key];
+      if (Array.isArray(currentValue) && typeof index === 'number') {
+        // Remove specific item from array
+        const newArray = currentValue.filter((_, i) => i !== index);
+        if (newArray.length === 0) {
+          removeFilter(key);
+        } else {
+          // Update the filter with the new array
+          updateFilter(key, newArray);
+        }
+      } else {
+        // Remove entire filter
+        removeFilter(key);
+      }
     }
   };
 
   // Get all active filters including search term
   const getAllActiveFilters = () => {
-    const filters: Array<{ key: keyof CharacterFilters; value: string }> = [];
+    const filters: Array<{ key: keyof CharacterFilters; value: string; index?: number }> = [];
     
     if (searchTerm.trim()) {
       filters.push({ key: 'name', value: searchTerm.trim() });
@@ -100,7 +117,19 @@ const Home = () => {
     
     Object.entries(activeFilters).forEach(([key, value]) => {
       if (value) {
-        filters.push({ key: key as keyof CharacterFilters, value: value as string });
+        if (Array.isArray(value)) {
+          // Handle array values - create a badge for each value
+          value.forEach((singleValue, index) => {
+            filters.push({ 
+              key: key as keyof CharacterFilters, 
+              value: singleValue as string,
+              index 
+            });
+          });
+        } else {
+          // Handle single values
+          filters.push({ key: key as keyof CharacterFilters, value: value as string });
+        }
       }
     });
     
@@ -122,7 +151,7 @@ const Home = () => {
     <Box
       sx={{
         minHeight: '100vh',
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#e6e7e3',
         fontFamily: 'Montserrat, sans-serif',
         display: 'flex',
         flexDirection: 'column',
@@ -170,22 +199,48 @@ const Home = () => {
           {!(currentTab === 'todos' && allActiveFilters.length > 0) && <Box />}
           
           {/* Records Counter */}
-          <Typography
-            variant="h6"
-            sx={{
-              fontFamily: 'Montserrat, sans-serif',
-              fontWeight: 'bold',
-              color: '#333',
-              fontSize: { xs: '18px', sm: '20px', md: '24px' },
-            }}
-          >
-            {currentTab === 'favoritos' 
-              ? `${displayedCharacters.length} ${displayedCharacters.length === 1 ? 'favorito' : 'favoritos'}`
-              : searchTerm.trim() || Object.keys(activeFilters).length > 0
-                ? `${totalCount} ${totalCount === 1 ? 'resultado encontrado' : 'resultados encontrados'}`
-                : `${totalCount} ${totalCount === 1 ? 'personaje' : 'personajes'}`
-            }
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+            <Typography
+              variant="h4"
+              component="h4"
+              sx={{
+                fontFamily: 'Montserrat',
+                fontWeight: 600,
+                fontStyle: 'normal',
+                fontSize: '18px',
+                lineHeight: '32px',
+                letterSpacing: '0px',
+                textAlign: 'center',
+                color: '#333630',
+              }}
+            >
+              {currentTab === 'favoritos' 
+                ? displayedCharacters.length
+                : totalCount
+              }
+            </Typography>
+            <Typography
+              variant="h6"
+              component="h6"
+              sx={{
+                fontFamily: 'Montserrat',
+                fontWeight: 600,
+                fontStyle: 'normal',
+                fontSize: '16px',
+                lineHeight: '100%',
+                letterSpacing: '2%',
+                textAlign: 'center',
+                color: '#575B52',
+              }}
+            >
+              {currentTab === 'favoritos' 
+                ? `${displayedCharacters.length === 1 ? 'favorito' : 'favoritos'}`
+                : searchTerm.trim() || Object.keys(activeFilters).length > 0
+                  ? `${totalCount === 1 ? 'resultado encontrado' : 'resultados encontrados'}`
+                  : `${totalCount === 1 ? 'personaje' : 'personajes'}`
+              }
+            </Typography>
+          </Box>
         </Box>
         
         {/* Applied Filters Badges */}
@@ -198,12 +253,19 @@ const Home = () => {
               mb: 2,
             }}
           >
-            {allActiveFilters.map(({ key, value }) => (
+            {allActiveFilters.map(({ key, value, index }, badgeIndex) => (
               <Badge
-                key={key}
-                variant={key === 'species' ? 'species' : key === 'status' ? 'status' : 'default'}
+                key={`${key}-${index !== undefined ? index : 'single'}-${badgeIndex}`}
+                sx={{
+                  backgroundColor: '#C7CBC2',
+                  color: '#333333',
+                  border: '1px solid #B5BAB0',
+                  '&:hover': {
+                    backgroundColor: '#B5BAB0',
+                  },
+                }}
                 removable
-                onRemove={() => handleRemoveFilter(key)}
+                onRemove={() => handleRemoveFilter(key, index)}
               >
                 {getFilterDisplayValue(key, value)}
               </Badge>
@@ -276,8 +338,8 @@ const Home = () => {
             <CharacterCard
               key={character.id}
               character={character}
-              onFavoriteChange={(id, isFavorite) => {
-                console.log(`Character ${id} favorite status: ${isFavorite}`);
+              onFavoriteChange={() => {
+                // Favorite status updated
               }}
               onClick={() => handleCharacterClick(character)}
             />
@@ -413,10 +475,7 @@ const Home = () => {
               onClick={loadMore}
               disabled={loading}
               sx={{
-                borderRadius: '8px',
                 padding: '12px 24px',
-                fontSize: '14px',
-                fontWeight: 500,
                 cursor: loading ? 'not-allowed' : 'pointer',
                 opacity: loading ? 0.6 : 1,
                 transition: 'all 0.3s ease',

@@ -2,14 +2,15 @@ import { Box, Button } from '@mui/material';
 import FilterIcon from './icons/FilterIcon';
 import { useState } from 'react';
 import FilterModal from './FilterModal';
-import { useFilterStore } from '../store/useFilterStore';
+import { useCurrentTab, useSetCurrentTab } from '../hooks';
 
 /**
  * Filter Tabs component for filtering between "Todos" and "Favoritos" characters
  * Features active filter highlighting and additional filter options
  */
 const FilterTabs = () => {
-  const { currentTab, setCurrentTab } = useFilterStore();
+  const currentTab = useCurrentTab();
+  const setCurrentTab = useSetCurrentTab();
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
   const handleTabChange = (tab: 'todos' | 'favoritos') => {
@@ -24,10 +25,11 @@ const FilterTabs = () => {
     setIsFilterModalOpen(false);
   };
 
-  const handleApplyFilters = (filters: any) => {
-    console.log('Filters applied:', filters);
+  const handleApplyFilters = (_filters: any) => {
     // Here you would implement the actual filter logic
   };
+
+  let itemsSize = '48px';
 
   return (
     <Box
@@ -50,7 +52,7 @@ const FilterTabs = () => {
           backgroundColor: '#FFFFFF',
           padding: '8px 12px 8px 8px',
           overflow: 'hidden',
-          height: '48px',
+          height: itemsSize,
           opacity: 1,
           alignItems: 'center',
         }}
@@ -118,8 +120,8 @@ const FilterTabs = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          width: { xs: '48px', sm: '52px', md: '56px' },
-          height: { xs: '48px', sm: '52px', md: '56px' },
+          width: itemsSize,
+          height: itemsSize,
           backgroundColor: '#ffffff',
           borderRadius: '50%',
           cursor: 'pointer',
@@ -137,7 +139,7 @@ const FilterTabs = () => {
       >
         <FilterIcon 
           sx={{ 
-            color: '#666666',
+            color: '#808C73',
             fontSize: { xs: '22px', sm: '24px', md: '26px' },
           }} 
         />
