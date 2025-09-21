@@ -26,11 +26,6 @@ interface BadgeProps {
    */
   onRemove?: () => void;
   /**
-   * Custom styling variant for the badge
-   * @default 'default'
-   */
-  variant?: 'default' | 'species' | 'status';
-  /**
    * Additional custom styles for the badge
    */
   sx?: SxProps<Theme>;
@@ -40,32 +35,7 @@ interface BadgeProps {
  * Badge component for displaying content with optional icons and remove functionality
  * Supports different visual variants and flexible icon positioning
  */
-const Badge = ({ children, preIcon, postIcon, removable = false, onRemove, variant = 'default', sx }: BadgeProps) => {
-  // Define styling based on variant
-  const getVariantStyles = () => {
-    switch (variant) {
-      case 'species':
-        return {
-          backgroundColor: '#e8f5e8',
-          color: '#2e7d32',
-          border: '1px solid #c8e6c9',
-        };
-      case 'status':
-        return {
-          backgroundColor: '#fff3e0',
-          color: '#f57c00',
-          border: '1px solid #ffcc02',
-        };
-      default:
-        return {
-          backgroundColor: '#f5f5f5',
-          color: '#666666',
-          border: '1px solid #e0e0e0',
-        };
-    }
-  };
-
-  const variantStyles = getVariantStyles();
+const Badge = ({ children, preIcon, postIcon, removable = false, onRemove, sx }: BadgeProps) => {
 
   if (removable) {
     // Removable badge with close button
@@ -79,13 +49,14 @@ const Badge = ({ children, preIcon, postIcon, removable = false, onRemove, varia
           fontWeight: 500,
           padding: { xs: '6px 8px 6px 12px', sm: '7px 9px 7px 13px', md: '8px 10px 8px 14px' },
           borderRadius: '20px',
+          backgroundColor: '#f5f5f5',
+          color: '#666666',
+          border: '1px solid #e0e0e0',
           gap: '6px',
           transition: 'all 0.2s ease',
           cursor: 'default',
-          ...variantStyles,
           '&:hover': {
-            backgroundColor: variant === 'species' ? '#d4edd4' : 
-                           variant === 'status' ? '#ffe0b2' : '#eeeeee',
+            backgroundColor: '#eeeeee',
           },
           ...sx,
         }}
@@ -137,10 +108,8 @@ const Badge = ({ children, preIcon, postIcon, removable = false, onRemove, varia
         gap: '6px',
         transition: 'all 0.2s ease',
         cursor: 'default',
-        ...variantStyles,
         '&:hover': {
-          backgroundColor: variant === 'species' ? '#d4edd4' : 
-                         variant === 'status' ? '#ffe0b2' : '#eeeeee',
+          backgroundColor: '#eeeeee',
         },
         ...sx,
       }}

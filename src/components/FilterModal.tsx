@@ -3,7 +3,8 @@ import { Close as CloseIcon } from '@mui/icons-material';
 import { useState, useEffect } from 'react';
 import Badge from './Badge';
 import Button from './Button';
-import { useFilterStore } from '../store/useFilterStore';
+import { useActiveFilters, useSetActiveFilters } from '../hooks';
+import { CharacterMapper } from '../services';
 import type { CharacterFilters } from '../services';
 
 interface FilterModalProps {
@@ -28,31 +29,13 @@ interface UIFilterState {
   status: string[];
 }
 
-// Mapping between Spanish UI and English API values
-const UI_TO_API_MAPPING = {
-  species: {
-    'Humano': 'Human',
-    'Cronenbergs': 'Cronenberg',
-    'Meeseeks': 'Meeseeks',
-    'Arañas gigantes telépatas': 'Giant Spider'
-  },
-  gender: {
-    'Masculino': 'Male',
-    'Femenino': 'Female',
-    'Desconocido': 'unknown'
-  },
-  status: {
-    'Vivo': 'Alive',
-    'Muerto': 'Dead'
-  }
-} as const;
-
 /**
  * Advanced Filters Modal component
  * Allows users to filter characters by species, gender, and status
  */
 const FilterModal = ({ open, onClose, onApplyFilters }: FilterModalProps) => {
-  const { activeFilters, setActiveFilters } = useFilterStore();
+  const activeFilters = useActiveFilters();
+  const setActiveFilters = useSetActiveFilters();
   const [localFilters, setLocalFilters] = useState<UIFilterState>({
     species: [],
     gender: [],
@@ -64,23 +47,47 @@ const FilterModal = ({ open, onClose, onApplyFilters }: FilterModalProps) => {
     if (open) {
       // Convert API filters back to UI filters for display
       const uiFilters: UIFilterState = {
-        species: activeFilters.species ? [getUIValue('species', activeFilters.species)] : [],
-        gender: activeFilters.gender ? [getUIValue('gender', activeFilters.gender)] : [],
-        status: activeFilters.status ? [getUIValue('status', activeFilters.status)] : [],
+        species: activeFilters.species ? 
+          (Array.isArray(activeFilters.species) 
+            ? activeFilters.species.map(value => getUIValue('species', value))
+            : [getUIValue('species', activeFilters.species)]
+          ) : [],
+        gender: activeFilters.gender ? 
+          (Array.isArray(activeFilters.gender) 
+            ? activeFilters.gender.map(value => getUIValue('gender', value))
+            : [getUIValue('gender', activeFilters.gender)]
+          ) : [],
+        status: activeFilters.status ? 
+          (Array.isArray(activeFilters.status) 
+            ? activeFilters.status.map(value => getUIValue('status', value))
+            : [getUIValue('status', activeFilters.status)]
+          ) : [],
       };
       setLocalFilters(uiFilters);
     }
   }, [open, activeFilters]);
 
-  // Helper function to get UI value from API value
-  const getUIValue = (category: keyof typeof UI_TO_API_MAPPING, apiValue: string): string => {
-    const mapping = UI_TO_API_MAPPING[category];
-    for (const [uiValue, mappedApiValue] of Object.entries(mapping)) {
-      if (mappedApiValue === apiValue) {
-        return uiValue;
-      }
-    }
-    return apiValue;
+  // Helper function to get UI value from API value (inverse of mapSpanishToEnglish)
+  const getUIValue = (category: 'species' | 'gender' | 'status', apiValue: string): string => {
+    const mappings = {
+      species: {
+        'Human': 'Humano',
+        'Cronenberg': 'Cronenbergs',
+        'Meeseeks': 'Meeseeks',
+        'Giant Spider': 'Arañas gigantes telépatas',
+      },
+      gender: {
+        'Male': 'Masculino',
+        'Female': 'Femenino',
+        'unknown': 'Desconocido',
+      },
+      status: {
+        'Alive': 'Vivo',
+        'Dead': 'Muerto',
+      },
+    };
+
+    return mappings[category][apiValue as keyof typeof mappings[typeof category]] || apiValue;
   };
 
   // Helper function to convert UI filters to API filters
@@ -88,27 +95,44 @@ const FilterModal = ({ open, onClose, onApplyFilters }: FilterModalProps) => {
     const apiFilters: CharacterFilters = {};
     
     if (uiFilters.species.length > 0) {
-      const apiValue = UI_TO_API_MAPPING.species[uiFilters.species[0] as keyof typeof UI_TO_API_MAPPING.species];
-      if (apiValue) apiFilters.species = apiValue;
+      const apiValues = uiFilters.species.map(species => 
+        CharacterMapper.mapSpanishToEnglish('species', species)
+      ).filter(Boolean);
+      if (apiValues.length === 1) {
+        apiFilters.species = apiValues[0];
+      } else if (apiValues.length > 1) {
+        apiFilters.species = apiValues;
+      }
     }
     
     if (uiFilters.gender.length > 0) {
-      const apiValue = UI_TO_API_MAPPING.gender[uiFilters.gender[0] as keyof typeof UI_TO_API_MAPPING.gender];
-      if (apiValue) apiFilters.gender = apiValue;
+      const apiValues = uiFilters.gender.map(gender => 
+        CharacterMapper.mapSpanishToEnglish('gender', gender)
+      ).filter(Boolean) as ('Male' | 'Female' | 'Genderless' | 'unknown')[];
+      if (apiValues.length === 1) {
+        apiFilters.gender = apiValues[0];
+      } else if (apiValues.length > 1) {
+        apiFilters.gender = apiValues;
+      }
     }
     
     if (uiFilters.status.length > 0) {
-      const apiValue = UI_TO_API_MAPPING.status[uiFilters.status[0] as keyof typeof UI_TO_API_MAPPING.status];
-      if (apiValue) apiFilters.status = apiValue;
+      const apiValues = uiFilters.status.map(status => 
+        CharacterMapper.mapSpanishToEnglish('status', status)
+      ).filter(Boolean) as ('Alive' | 'Dead' | 'unknown')[];
+      if (apiValues.length === 1) {
+        apiFilters.status = apiValues[0];
+      } else if (apiValues.length > 1) {
+        apiFilters.status = apiValues;
+      }
     }
     
     return apiFilters;
   };
 
-  // Filter options
-  const speciesOptions = ['Humano', 'Cronenbergs', 'Meeseeks', 'Arañas gigantes telépatas'];
-  const genderOptions = ['Masculino', 'Femenino', 'Desconocido'];
-  const statusOptions = ['Vivo', 'Muerto'];
+  // Get filter options from CharacterMapper
+  const filterOptions = CharacterMapper.getFilterOptionsInSpanish();
+  const { species: speciesOptions, gender: genderOptions, status: statusOptions } = filterOptions;
 
   const handleFilterToggle = (category: keyof UIFilterState, value: string) => {
     setLocalFilters(prev => ({
@@ -161,7 +185,7 @@ const FilterModal = ({ open, onClose, onApplyFilters }: FilterModalProps) => {
           backgroundColor: '#ffffff',
           borderRadius: '16px',
           padding: { xs: '24px', sm: '32px' },
-          maxWidth: '480px',
+          maxWidth: '600px',
           width: '100%',
           maxHeight: '80vh',
           overflow: 'auto',
@@ -229,7 +253,31 @@ const FilterModal = ({ open, onClose, onApplyFilters }: FilterModalProps) => {
                 sx={{ cursor: 'pointer' }}
               >
                 <Badge
-                  variant={localFilters.species.includes(species) ? 'species' : 'default'}
+                  sx={localFilters.species.includes(species) ? {
+                    backgroundColor: '#C7CBC2',
+                    color: '#333333',
+                    border: '1px solid #B5BAB0',
+                    fontFamily: 'Montserrat',
+                    fontWeight: 500,
+                    fontSize: '14px',
+                    lineHeight: '20px',
+                    textAlign: 'center',
+                    '&:hover': {
+                      backgroundColor: '#B5BAB0',
+                    },
+                  } : {
+                    backgroundColor: 'transparent',
+                    color: '#666666',
+                    border: '1px solid #e0e0e0',
+                    fontFamily: 'Montserrat',
+                    fontWeight: 500,
+                    fontSize: '14px',
+                    lineHeight: '20px',
+                    textAlign: 'center',
+                    '&:hover': {
+                      backgroundColor: '#f5f5f5',
+                    },
+                  }}
                 >
                   {species}
                 </Badge>
@@ -260,7 +308,31 @@ const FilterModal = ({ open, onClose, onApplyFilters }: FilterModalProps) => {
                 sx={{ cursor: 'pointer' }}
               >
                 <Badge
-                  variant={localFilters.gender.includes(gender) ? 'species' : 'default'}
+                  sx={localFilters.gender.includes(gender) ? {
+                    backgroundColor: '#C7CBC2',
+                    color: '#333333',
+                    border: '1px solid #B5BAB0',
+                    fontFamily: 'Montserrat',
+                    fontWeight: 500,
+                    fontSize: '14px',
+                    lineHeight: '20px',
+                    textAlign: 'center',
+                    '&:hover': {
+                      backgroundColor: '#B5BAB0',
+                    },
+                  } : {
+                    backgroundColor: 'transparent',
+                    color: '#666666',
+                    border: '1px solid #e0e0e0',
+                    fontFamily: 'Montserrat',
+                    fontWeight: 500,
+                    fontSize: '14px',
+                    lineHeight: '20px',
+                    textAlign: 'center',
+                    '&:hover': {
+                      backgroundColor: '#f5f5f5',
+                    },
+                  }}
                 >
                   {gender}
                 </Badge>
@@ -291,7 +363,31 @@ const FilterModal = ({ open, onClose, onApplyFilters }: FilterModalProps) => {
                 sx={{ cursor: 'pointer' }}
               >
                 <Badge
-                  variant={localFilters.status.includes(status) ? 'status' : 'default'}
+                  sx={localFilters.status.includes(status) ? {
+                    backgroundColor: '#C7CBC2',
+                    color: '#333333',
+                    border: '1px solid #B5BAB0',
+                    fontFamily: 'Montserrat',
+                    fontWeight: 500,
+                    fontSize: '14px',
+                    lineHeight: '20px',
+                    textAlign: 'center',
+                    '&:hover': {
+                      backgroundColor: '#B5BAB0',
+                    },
+                  } : {
+                    backgroundColor: 'transparent',
+                    color: '#666666',
+                    border: '1px solid #e0e0e0',
+                    fontFamily: 'Montserrat',
+                    fontWeight: 500,
+                    fontSize: '14px',
+                    lineHeight: '20px',
+                    textAlign: 'center',
+                    '&:hover': {
+                      backgroundColor: '#f5f5f5',
+                    },
+                  }}
                 >
                   {status}
                 </Badge>
@@ -333,7 +429,12 @@ const FilterModal = ({ open, onClose, onApplyFilters }: FilterModalProps) => {
           )}
           
           {/* Apply Button */}
-          <Button onClick={handleApplyFilters}>
+          <Button onClick={handleApplyFilters}
+            sx={{
+              width: '148px',
+              marginLeft: 'auto',
+            }}
+          >
             Aplicar filtros
           </Button>
         </Box>
