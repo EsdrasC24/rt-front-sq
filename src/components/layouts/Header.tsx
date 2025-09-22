@@ -124,7 +124,7 @@ const Header = () => {
               ),
               sx: {
                 fontFamily: 'Montserrat',
-                background: ' #3D403AB2',
+                background: '#3D403AB2',
                 backgroundBlendMode: 'multiply',
                 borderRadius: '8px',
                 fontSize: { xs: '14px', sm: '15px', md: '16px' },
