@@ -11,12 +11,12 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import type { Character } from '../services';
-import { useEpisode } from '../hooks/useEpisode';
-import { characterService } from '../services';
+import { characterService, CharacterMapper, episodeService } from '../services';
 import RelatedCharacterCard from './RelatedCharacterCard';
 import StarIcon from './icons/StarIcon';
-import Badge from './Badge';
+import StatusBadge from './StatusBadge';
 import bgImage from '../assets/bg-character-detail.jpg';
+import { useIsFavorite } from '../hooks';
 
 interface CharacterDetailModalProps {
   character: Character | null;
@@ -28,10 +28,14 @@ export function CharacterDetailModal({ character, open, onClose }: CharacterDeta
   const [relatedCharacters, setRelatedCharacters] = useState<Character[]>([]);
   const [loadingRelated, setLoadingRelated] = useState(false);
   const [episodeNames, setEpisodeNames] = useState<Record<string, string>>({});
-  const { getEpisodeName, loading: episodeLoading } = useEpisode();
+  const [episodeDetails, setEpisodeDetails] = useState<Record<string, { name: string; episode: string }>>({});
+  const [loadingEpisodes, setLoadingEpisodes] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
+  
+  // Check if current character is favorite
+  const isCharacterFavorite = useIsFavorite(character?.id || 0);
 
   // Drag functionality for related characters section
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -64,49 +68,6 @@ export function CharacterDetailModal({ character, open, onClose }: CharacterDeta
     slider.scrollLeft = scrollLeft - walk;
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'alive':
-        return '#4CAF50';
-      case 'dead':
-        return '#F44336';
-      default:
-        return '#FF9800';
-    }
-  };
-
-  const getStatusBadgeStyles = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'alive':
-        return {
-          backgroundColor: '#e8f5e8',
-          color: '#2e7d32',
-          border: '1px solid #4caf50',
-          '&:hover': {
-            backgroundColor: '#d4edd4',
-          },
-        };
-      case 'dead':
-        return {
-          backgroundColor: '#ffebee',
-          color: '#c62828',
-          border: '1px solid #f44336',
-          '&:hover': {
-            backgroundColor: '#ffcdd2',
-          },
-        };
-      default:
-        return {
-          backgroundColor: '#fff3e0',
-          color: '#ef6c00',
-          border: '1px solid #ff9800',
-          '&:hover': {
-            backgroundColor: '#ffe0b2',
-          },
-        };
-    }
-  };
-
   // Load related characters when modal opens
   useEffect(() => {
     if (character && open) {
@@ -135,23 +96,47 @@ export function CharacterDetailModal({ character, open, onClose }: CharacterDeta
   // Load episode names when character changes
   useEffect(() => {
     if (character && open) {
-      const loadEpisodeNames = async () => {
+      const loadEpisodeDetails = async () => {
+        setLoadingEpisodes(true);
         const names: Record<string, string> = {};
-        for (const episodeUrl of character.episode) {
-          try {
-            const name = await getEpisodeName(episodeUrl);
-            names[episodeUrl] = name;
-          } catch (error) {
-            console.error('Error loading episode name:', error);
-            const episodeId = episodeUrl.split('/').pop();
-            names[episodeUrl] = `Episode ${episodeId}`;
+        const details: Record<string, { name: string; episode: string }> = {};
+        
+        try {
+          for (const episodeUrl of character.episode) {
+            try {
+              const episodeId = episodeService.extractEpisodeId(episodeUrl);
+              if (episodeId) {
+                const episodeData = await episodeService.getEpisodeById(episodeId);
+                names[episodeUrl] = episodeData.name;
+                details[episodeUrl] = {
+                  name: episodeData.name,
+                  episode: episodeData.episode
+                };
+              } else {
+                throw new Error('Invalid episode URL');
+              }
+            } catch (error) {
+              console.error('Error loading episode details for URL:', episodeUrl, error);
+              const episodeId = episodeUrl.split('/').pop();
+              const fallbackName = `Episodio ${episodeId}`;
+              names[episodeUrl] = fallbackName;
+              details[episodeUrl] = {
+                name: fallbackName,
+                episode: `S01 E${episodeId?.padStart(2, '0') || '01'}`
+              };
+            }
           }
+        } catch (error) {
+          console.error('Error loading episodes:', error);
+        } finally {
+          setEpisodeNames(names);
+          setEpisodeDetails(details);
+          setLoadingEpisodes(false);
         }
-        setEpisodeNames(names);
       };
-      loadEpisodeNames();
+      loadEpisodeDetails();
     }
-  }, [character, open, getEpisodeName]);
+  }, [character, open]);
 
   if (!character) return null;
 
@@ -202,139 +187,156 @@ export function CharacterDetailModal({ character, open, onClose }: CharacterDeta
         scrollbarWidth: 'thin',
         scrollbarColor: '#B6DA8B #f1f1f1',
       }}>
-        {/* Header with Rick and Morty Background */}
+        {/* Header Section */}
         <Box sx={{ 
+          p: 0,
           position: 'relative',
-          height: '128px',
-          backgroundImage: `url(${bgImage})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'top',
-          backgroundRepeat: 'no-repeat',
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: '#00000066',
-            zIndex: 1,
-          },
-        }}>
-          {/* Close button */}
+          width: '100%',}}>
+          {/* Header with Rick and Morty Background */}
           <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'flex-end', 
-            p: 2,
             position: 'relative',
-            zIndex: 2,
+            top: { xs: 0, sm: 'auto' },
+            left: { xs: 0, sm: 'auto' },
+            width: '100%',
+            height: '128px',
+            backgroundImage: `url(${bgImage})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'top',
+            backgroundRepeat: 'no-repeat',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: '#00000066',
+              zIndex: 1,
+            },
           }}>
-            <IconButton 
-              onClick={onClose}
-              sx={{ 
-                color: '#808c73',
-                backgroundColor: '#FAFAFA',
-                width: 40,
-                height: 40,
-                '&:hover': {
-                  backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                },
-              }}
-            >
-              <CloseIcon sx={{ fontSize: 20 }} />
-            </IconButton>
-          </Box>
-        </Box>
-
-        {/* Character Info Card - Separate from header */}
-        <Box sx={{ px:3,  pt:1, pb:3, position: 'relative', }}>
-          <Box sx={{
-            borderRadius: 2,
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' }, // Columna en móvil, fila en desktop
-            alignItems: { xs: 'center', sm: 'flex-end' },
-            gap: 2,
-            paddingLeft: { xs: 0, sm: '140px' }, // Sin padding left en móvil
-            textAlign: { xs: 'center', sm: 'left' }, // Centrado en móvil
-          }}>
-            <Box sx={{
-              position: { xs: 'relative', sm: 'absolute' }, // Relativo en móvil, absoluto en desktop
-              left: { xs: 'auto', sm: '24px' },
-              top: { xs: 0, sm: '-60px' },
-              mb: { xs: 2, sm: 0 }, // Margen bottom en móvil
-            }}>
-              {/* Character Image */}
-              <Avatar
-                src={character.image}
-                alt={character.name}
-                sx={{ 
-                  width: 128, 
-                  height: 128,
-                  border: '4px solid #e6e7e3',
-                  zIndex: 9999,
-                }}
-              />
-            </Box>
-
-            {/* Character Info */}
+            {/* Close button */}
             <Box sx={{ 
-              flex: 1, 
-              paddingBottom: { xs: 0, sm: '16px' },
-              width: { xs: '100%', sm: 'auto' }, // Full width en móvil
+              display: 'flex', 
+              justifyContent: 'flex-end', 
+              p: 2,
+              position: 'relative',
+              zIndex: 2,
             }}>
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 1,
-                justifyContent: { xs: 'center', sm: 'flex-start' }, // Centrado en móvil
-              }}>
-                <Typography 
-                  variant="h6" 
-                  sx={{ 
-                    color: '#333630', 
-                    fontWeight: 'semibold',
-                    fontFamily: 'Montserrat, sans-serif',
-                    fontSize: { xs: '1.5rem', sm: '2rem' }, // Tamaño responsive
-                  }}
-                >
-                  {character.name}
-                </Typography>
-                <StarIcon sx={{ fontSize: '18px', color: '#8BC547' }} />
-              </Box>
-              <Typography 
-                variant="body2" 
+              <IconButton 
+                onClick={onClose}
                 sx={{ 
-                  color: '#666', 
-                  fontFamily: 'Montserrat, sans-serif',
-                  fontSize: '.875rem',
+                  color: '#808c73',
+                  backgroundColor: '#FAFAFA',
+                  width: 40,
+                  height: 40,
+                  '&:hover': {
+                    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                  },
                 }}
               >
-                {character.species}
-              </Typography>
+                <CloseIcon sx={{ fontSize: 20 }} />
+              </IconButton>
             </Box>
+          </Box>
 
-            {/* Three dots menu */}
-            <IconButton 
-              size="small" 
-              sx={{ 
-                color: '#999', 
-                alignSelf: { xs: 'center', sm: 'flex-start' },
-                position: { xs: 'absolute', sm: 'static' },
-                top: { xs: '16px', sm: 'auto' },
-                right: { xs: '16px', sm: 'auto' },
-              }}
-            >
-              <Box sx={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                gap: '2px',
-                width: '3px',
+          {/* Character Info Card - Separate from header */}
+          <Box sx={{ 
+            px: 3,  
+            pt: 1, 
+            pb: 3, 
+            position: 'relative',
+            mt: { xs: '-55px', sm: 0 },
+          }}>
+            <Box sx={{
+              borderRadius: 2,
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' }, // Columna en móvil, fila en desktop
+              alignItems: { xs: 'center', sm: 'flex-end' },
+              gap: { xs: 0, sm: 2 },
+              paddingLeft: { xs: 0, sm: '140px' }, // Sin padding left en móvil
+              textAlign: { xs: 'center', sm: 'left' }, // Centrado en móvil
+            }}>
+              <Box sx={{
+                position: { xs: 'relative', sm: 'absolute' }, // Relativo en móvil, absoluto en desktop
+                left: { xs: 'auto', sm: '24px' },
+                top: { xs: 0, sm: '-60px' },
+                // mb: { xs: 2, sm: 0 }, // Margen bottom en móvil
               }}>
-                <Box sx={{ width: '3px', height: '3px', backgroundColor: 'currentColor', borderRadius: '50%' }} />
-                <Box sx={{ width: '3px', height: '3px', backgroundColor: 'currentColor', borderRadius: '50%' }} />
-                <Box sx={{ width: '3px', height: '3px', backgroundColor: 'currentColor', borderRadius: '50%' }} />
+                {/* Character Image */}
+                <Avatar
+                  src={character.image}
+                  alt={character.name}
+                  sx={{ 
+                    width: { xs: 112, sm: 128 }, 
+                    height: { xs: 112, sm: 128 },
+                    border: '4px solid #e6e7e3',
+                    zIndex: 9999,
+                  }}
+                />
               </Box>
-            </IconButton>
+
+              {/* Character Info */}
+              <Box sx={{ 
+                flex: 1, 
+                paddingBottom: { xs: 0, sm: '16px' },
+                width: { xs: '100%', sm: 'auto' }, // Full width en móvil
+              }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 1,
+                  justifyContent: { xs: 'center', sm: 'flex-start' }, // Centrado en móvil
+                }}>
+                  <Typography 
+                    variant="h6" 
+                    sx={{ 
+                      color: '#333630', 
+                      fontWeight: 'semibold',
+                      fontFamily: 'Montserrat, sans-serif',
+                      fontSize: { xs: '1.5rem', sm: '2rem' }, // Tamaño responsive
+                    }}
+                  >
+                    {character.name}
+                  </Typography>
+                  {isCharacterFavorite && (
+                    <StarIcon sx={{ fontSize: '18px', color: '#8BC547' }} />
+                  )}
+                </Box>
+                <Typography 
+                  variant="body2" 
+                  sx={{ 
+                    color: '#666', 
+                    fontFamily: 'Montserrat, sans-serif',
+                    fontSize: '.875rem',
+                  }}
+                >
+                  {CharacterMapper.mapEnglishToSpanish('species', character.species)}
+                </Typography>
+              </Box>
+
+              {/* Three dots menu */}
+              {/* <IconButton 
+                size="small" 
+                sx={{ 
+                  color: '#999', 
+                  alignSelf: { xs: 'center', sm: 'flex-start' },
+                  position: { xs: 'absolute', sm: 'static' },
+                  top: { xs: '16px', sm: 'auto' },
+                  right: { xs: '16px', sm: 'auto' },
+                }}
+              >
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '2px',
+                  width: '3px',
+                }}>
+                  <Box sx={{ width: '3px', height: '3px', backgroundColor: 'currentColor', borderRadius: '50%' }} />
+                  <Box sx={{ width: '3px', height: '3px', backgroundColor: 'currentColor', borderRadius: '50%' }} />
+                  <Box sx={{ width: '3px', height: '3px', backgroundColor: 'currentColor', borderRadius: '50%' }} />
+                </Box>
+              </IconButton> */}
+            </Box>
           </Box>
         </Box>
 
@@ -344,21 +346,22 @@ export function CharacterDetailModal({ character, open, onClose }: CharacterDeta
             {/* Information Card */}
             <Grid item xs={12} md={4}>
               <Box sx={{ 
-                backgroundColor: 'white', 
+                backgroundColor: '#fafafa', 
                 borderRadius: 2, 
                 p: 3,
                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
                 height: '100%',
                 display: 'flex',
                 flexDirection: 'column',
-                alignItems: 'center',
-                textAlign: 'center',
               }}>
                 <Typography variant="h6" sx={{ 
-                  fontWeight: 'bold', 
+                  fontFamily: 'Montserrat',
+                  fontWeight: 600,
+                  fontSize: '16px',
+                  lineHeight: '100%',
+                  letterSpacing: '2%',
                   mb: 3, 
                   color: '#333',
-                  fontFamily: 'Montserrat, sans-serif',
                 }}>
                   Información
                 </Typography>
@@ -366,33 +369,49 @@ export function CharacterDetailModal({ character, open, onClose }: CharacterDeta
                 {/* Gender */}
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="body2" sx={{ 
-                    fontWeight: 'bold', 
+                    fontFamily: 'Montserrat',
+                    fontWeight: 700,
+                    fontSize: '12px',
+                    lineHeight: '100%',
+                    letterSpacing: '2%',
                     color: '#999', 
                     mb: 0.5,
-                    textTransform: 'uppercase',
-                    letterSpacing: 0.5,
-                    fontSize: '0.75rem'
                   }}>
                     Género
                   </Typography>
-                  <Typography variant="body1" sx={{ color: '#333', fontWeight: '500' }}>
-                    {character.gender === 'Male' ? 'Masculino' : character.gender === 'Female' ? 'Femenino' : character.gender}
+                  <Typography variant="body1" sx={{ 
+                    fontFamily: 'Montserrat',
+                    fontWeight: 500,
+                    fontSize: '16px',
+                    lineHeight: '24px',
+                    letterSpacing: '0%',
+                    color: '#333',
+                  }}>
+                    {CharacterMapper.mapEnglishToSpanish('gender', character.gender)}
                   </Typography>
                 </Box>
 
                 {/* Origin */}
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="body2" sx={{ 
-                    fontWeight: 'bold', 
+                    fontFamily: 'Montserrat',
+                    fontWeight: 700,
+                    fontSize: '12px',
+                    lineHeight: '100%',
+                    letterSpacing: '2%',
                     color: '#999', 
                     mb: 0.5,
-                    textTransform: 'uppercase',
-                    letterSpacing: 0.5,
-                    fontSize: '0.75rem'
                   }}>
                     Origen
                   </Typography>
-                  <Typography variant="body1" sx={{ color: '#333', fontWeight: '500' }}>
+                  <Typography variant="body1" sx={{ 
+                    fontFamily: 'Montserrat',
+                    fontWeight: 500,
+                    fontSize: '16px',
+                    lineHeight: '24px',
+                    letterSpacing: '0%',
+                    color: '#575B52',
+                  }}>
                     {character.origin?.name || 'Tierra (C-137)'}
                   </Typography>
                 </Box>
@@ -400,30 +419,17 @@ export function CharacterDetailModal({ character, open, onClose }: CharacterDeta
                 {/* Status */}
                 <Box>
                   <Typography variant="body2" sx={{ 
-                    fontWeight: 'bold', 
+                    fontFamily: 'Montserrat',
+                    fontWeight: 700,
+                    fontSize: '12px',
+                    lineHeight: '100%',
+                    letterSpacing: '2%',
                     color: '#999', 
                     mb: 0.5,
-                    textTransform: 'uppercase',
-                    letterSpacing: 0.5,
-                    fontSize: '0.75rem'
                   }}>
                     Estado
                   </Typography>
-                  <Badge
-                    preIcon={
-                      <Box
-                        sx={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: '50%',
-                          backgroundColor: getStatusColor(character.status),
-                        }}
-                      />
-                    }
-                    sx={getStatusBadgeStyles(character.status)}
-                  >
-                    {character.status === 'Alive' ? 'Vivo' : character.status === 'Dead' ? 'Muerto' : 'Desconocido'}
-                  </Badge>
+                  <StatusBadge status={character.status} />
                 </Box>
               </Box>
             </Grid>
@@ -431,7 +437,7 @@ export function CharacterDetailModal({ character, open, onClose }: CharacterDeta
             {/* Episodes Card */}
             <Grid item xs={12} md={8}>
               <Box sx={{ 
-                backgroundColor: 'white', 
+                backgroundColor: '#fafafa', 
                 borderRadius: 2, 
                 p: 3,
                 boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
@@ -440,17 +446,23 @@ export function CharacterDetailModal({ character, open, onClose }: CharacterDeta
                 flexDirection: 'column',
               }}>
                 <Typography variant="h6" sx={{ 
-                  fontWeight: 'bold', 
+                  fontFamily: 'Montserrat',
+                  fontWeight: 600,
+                  fontSize: '16px',
+                  lineHeight: '100%',
+                  letterSpacing: '2%',
                   mb: 3, 
                   color: '#333',
-                  fontFamily: 'Montserrat, sans-serif',
                 }}>
                   Episodios
                 </Typography>
                 <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  {episodeLoading ? (
+                  {loadingEpisodes ? (
                     <Box sx={{ display: 'flex', justifyContent: 'center', py: 4, flex: 1, alignItems: 'center' }}>
-                      <CircularProgress size={32} />
+                      <CircularProgress 
+                        size={32} 
+                        sx={{ color: '#8BC547' }}
+                      />
                     </Box>
                   ) : (
                     <Box sx={{ maxHeight: 300, overflow: 'auto', flex: 1,
@@ -481,8 +493,9 @@ export function CharacterDetailModal({ character, open, onClose }: CharacterDeta
                       scrollbarColor: '#B6DA8B #f1f1f1',
                     }}>
                     {character.episode.slice(0, 5).map((episodeUrl) => {
-                      const episodeId = episodeUrl.split('/').pop();
-                      const name = episodeNames[episodeUrl] || 'Piloto';
+                      const episodeDetail = episodeDetails[episodeUrl];
+                      const name = episodeDetail?.name || episodeNames[episodeUrl] || 'Cargando...';
+                      const episodeCode = episodeDetail?.episode?.replace('E', ' E') || 'S?? E??';
                       
                       return (
                         <Box 
@@ -492,23 +505,28 @@ export function CharacterDetailModal({ character, open, onClose }: CharacterDeta
                             justifyContent: 'space-between', 
                             alignItems: 'center',
                             py: 1.5,
-                            borderBottom: '1px solid #F0F0F0',
-                            '&:last-child': {
-                              borderBottom: 'none',
-                            },
+                        
                           }}
                         >
-                          <Box sx={{ flex: 1 }}>
+                          <Box sx={{ flex: 1, display: 'flex' }}>
                             <Typography variant="body2" sx={{ 
-                              fontWeight: 'bold', 
-                              color: '#333',
-                              fontSize: '0.875rem'
+                              fontFamily: 'Montserrat',
+                              fontWeight: 500,
+                              fontSize: '14px',
+                              lineHeight: '20px',
+                              letterSpacing: '0%',
+                              color: '#808C73',
+                              mr: 1,
                             }}>
-                              S01 E{episodeId?.padStart(2, '0')}
+                              {episodeCode}
                             </Typography>
                             <Typography variant="body2" sx={{ 
-                              color: '#666',
-                              fontSize: '0.8rem'
+                              fontFamily: 'Montserrat',
+                              fontWeight: 500,
+                              fontSize: '14px',
+                              lineHeight: '20px',
+                              letterSpacing: '0%',
+                              color: '#575B52',
                             }}>
                               {name}
                             </Typography>
@@ -533,16 +551,25 @@ export function CharacterDetailModal({ character, open, onClose }: CharacterDeta
                 {/* First seen in */}
                 <Grid item xs={12} md={6}>
                   <Typography variant="body2" sx={{ 
-                    fontWeight: 'bold', 
+                    fontFamily: 'Montserrat',
+                    fontWeight: 700,
+                    fontSize: '12px',
+                    lineHeight: '100%',
+                    letterSpacing: '2%',
                     color: '#999', 
                     mb: 0.5,
                     textTransform: 'uppercase',
-                    letterSpacing: 0.5,
-                    fontSize: '0.75rem'
                   }}>
                     First seen in
                   </Typography>
-                  <Typography variant="body1" sx={{ color: '#333', fontWeight: '500' }}>
+                  <Typography variant="body1" sx={{ 
+                    fontFamily: 'Montserrat',
+                    fontWeight: 500,
+                    fontSize: '16px',
+                    lineHeight: '24px',
+                    letterSpacing: '0%',
+                    color: '#333',
+                  }}>
                     Never Ricking Morty
                   </Typography>
                 </Grid>
@@ -550,16 +577,25 @@ export function CharacterDetailModal({ character, open, onClose }: CharacterDeta
                 {/* Last known location */}
                 <Grid item xs={12} md={6}>
                   <Typography variant="body2" sx={{ 
-                    fontWeight: 'bold', 
+                    fontFamily: 'Montserrat',
+                    fontWeight: 700,
+                    fontSize: '12px',
+                    lineHeight: '100%',
+                    letterSpacing: '2%',
                     color: '#999', 
                     mb: 0.5,
                     textTransform: 'uppercase',
-                    letterSpacing: 0.5,
-                    fontSize: '0.75rem'
                   }}>
                     Last known location
                   </Typography>
-                  <Typography variant="body1" sx={{ color: '#333', fontWeight: '500' }}>
+                  <Typography variant="body1" sx={{ 
+                    fontFamily: 'Montserrat',
+                    fontWeight: 500,
+                    fontSize: '16px',
+                    lineHeight: '24px',
+                    letterSpacing: '0%',
+                    color: '#333',
+                  }}>
                     {character.location?.name || 'Story Train'}
                   </Typography>
                 </Grid>
@@ -568,24 +604,28 @@ export function CharacterDetailModal({ character, open, onClose }: CharacterDeta
           </Box>
 
           {/* Related Characters Section */}
-          <Box sx={{ mt: 3 }}>
+          <Box sx={{ mt: 1 }}>
             <Box sx={{ 
-              backgroundColor: 'white', 
               borderRadius: 2, 
-              p: 3,
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+              px: 1,
             }}>
-              <Typography variant="h6" sx={{ 
-                fontWeight: 'bold', 
+              <Typography variant="h4" sx={{ 
+                fontFamily: 'Montserrat',
+                fontWeight: 600,
+                fontSize: '16px',
+                lineHeight: '100%',
+                letterSpacing: '2%',
                 mb: 3, 
-                color: '#333',
-                fontFamily: 'Montserrat, sans-serif',
+                color: '#333630',
               }}>
                 Personajes relacionados
               </Typography>
               {loadingRelated ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
-                  <CircularProgress size={32} />
+                  <CircularProgress 
+                    size={32} 
+                    sx={{ color: '#8BC547' }}
+                  />
                 </Box>
               ) : (
                 <Box 

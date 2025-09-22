@@ -101,7 +101,7 @@ export class CharacterMapper {
     return {
       species: ['Humano', 'Cronenbergs', 'Meeseeks', 'Arañas gigantes telépatas'],
       gender: ['Masculino', 'Femenino', 'Desconocido'],
-      status: ['Vivo', 'Muerto'],
+      status: ['Vivo', 'Muerto', 'Desconocido'],
     };
   }
 
@@ -124,6 +124,7 @@ export class CharacterMapper {
       status: {
         'Vivo': 'Alive',
         'Muerto': 'Dead',
+        'Desconocido': 'unknown',
       },
     };
 
@@ -149,6 +150,7 @@ export class CharacterMapper {
       status: {
         'Alive': 'Vivo',
         'Dead': 'Muerto',
+        'unknown': 'Desconocido',
       },
     };
 

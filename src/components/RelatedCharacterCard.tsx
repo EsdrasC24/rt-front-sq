@@ -1,5 +1,6 @@
 import { Box, Typography, IconButton } from '@mui/material';
 import type { Character } from '../services';
+import { CharacterMapper } from '../services';
 import StarIcon from './icons/StarIcon';
 import { useIsFavorite, useToggleFavorite } from '../hooks';
 
@@ -71,7 +72,8 @@ const RelatedCharacterCard = ({
         sx={{
           position: 'relative',
           width: '100%',
-          height: '120px',
+          minHeight: '144px',
+          maxHeight: '200px',
           overflow: 'hidden',
         }}
       >
@@ -84,6 +86,7 @@ const RelatedCharacterCard = ({
             width: '100%',
             height: '100%',
             objectFit: 'cover',
+            objectPosition: 'top',
           }}
         />
 
@@ -92,15 +95,15 @@ const RelatedCharacterCard = ({
           sx={{
             position: 'absolute',
             top: '6px',
-            right: '6px',
+            right: '15px',
           }}
         >
           <IconButton
             onClick={handleFavoriteClick}
             sx={{
               backgroundColor: isCharacterFavorite ? '#B6DA8B' : 'rgba(255, 255, 255, 0.9)',
-              width: '28px',
-              height: '28px',
+              width: '44px',
+              height: '44px',
               transition: 'all 0.3s ease',
               '&:hover': {
                 backgroundColor: isCharacterFavorite ? '#A5C97A' : 'rgba(255, 255, 255, 1)',
@@ -131,9 +134,9 @@ const RelatedCharacterCard = ({
           sx={{
             fontFamily: 'Montserrat, sans-serif',
             fontWeight: 600,
-            fontSize: '14px',
-            color: '#333333',
-            lineHeight: 1.2,
+            fontSize: '18px',
+            color: '#333630',
+            lineHeight: '2rem',
             marginBottom: '4px',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -149,14 +152,14 @@ const RelatedCharacterCard = ({
           sx={{
             fontFamily: 'Montserrat, sans-serif',
             fontWeight: 400,
-            fontSize: '12px',
-            color: '#666666',
+            fontSize: '14px',
+            color: '#575B52',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
           }}
         >
-          {character.species}
+          {CharacterMapper.mapEnglishToSpanish('species', character.species)}
         </Typography>
       </Box>
     </Box>

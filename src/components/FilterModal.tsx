@@ -1,6 +1,6 @@
 import { Box, Typography, Modal, IconButton } from '@mui/material';
 import { Close as CloseIcon } from '@mui/icons-material';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Badge from './Badge';
 import Button from './Button';
 import { useActiveFilters, useSetActiveFilters } from '../hooks';
@@ -41,6 +41,12 @@ const FilterModal = ({ open, onClose, onApplyFilters }: FilterModalProps) => {
     gender: [],
     status: [],
   });
+
+  // Drag state for mobile bottom sheet
+  const [dragY, setDragY] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startY, setStartY] = useState(0);
+  const modalRef = useRef<HTMLDivElement>(null);
 
   // Load current filters when modal opens
   useEffect(() => {
@@ -84,6 +90,7 @@ const FilterModal = ({ open, onClose, onApplyFilters }: FilterModalProps) => {
       status: {
         'Alive': 'Vivo',
         'Dead': 'Muerto',
+        'unknown': 'Desconocido',
       },
     };
 
@@ -93,54 +100,43 @@ const FilterModal = ({ open, onClose, onApplyFilters }: FilterModalProps) => {
   // Helper function to convert UI filters to API filters
   const convertToAPIFilters = (uiFilters: UIFilterState): CharacterFilters => {
     const apiFilters: CharacterFilters = {};
-    
+
     if (uiFilters.species.length > 0) {
-      const apiValues = uiFilters.species.map(species => 
-        CharacterMapper.mapSpanishToEnglish('species', species)
-      ).filter(Boolean);
-      if (apiValues.length === 1) {
-        apiFilters.species = apiValues[0];
-      } else if (apiValues.length > 1) {
-        apiFilters.species = apiValues;
-      }
+      apiFilters.species = uiFilters.species.map(spanishValue => 
+        CharacterMapper.mapSpanishToEnglish('species', spanishValue)
+      ) as any;
     }
-    
+
     if (uiFilters.gender.length > 0) {
-      const apiValues = uiFilters.gender.map(gender => 
-        CharacterMapper.mapSpanishToEnglish('gender', gender)
-      ).filter(Boolean) as ('Male' | 'Female' | 'Genderless' | 'unknown')[];
-      if (apiValues.length === 1) {
-        apiFilters.gender = apiValues[0];
-      } else if (apiValues.length > 1) {
-        apiFilters.gender = apiValues;
-      }
+      apiFilters.gender = uiFilters.gender.map(spanishValue => 
+        CharacterMapper.mapSpanishToEnglish('gender', spanishValue)
+      ) as any;
     }
-    
+
     if (uiFilters.status.length > 0) {
-      const apiValues = uiFilters.status.map(status => 
-        CharacterMapper.mapSpanishToEnglish('status', status)
-      ).filter(Boolean) as ('Alive' | 'Dead' | 'unknown')[];
-      if (apiValues.length === 1) {
-        apiFilters.status = apiValues[0];
-      } else if (apiValues.length > 1) {
-        apiFilters.status = apiValues;
-      }
+      apiFilters.status = uiFilters.status.map(spanishValue => 
+        CharacterMapper.mapSpanishToEnglish('status', spanishValue)
+      ) as any;
     }
-    
+
     return apiFilters;
   };
-
-  // Get filter options from CharacterMapper
-  const filterOptions = CharacterMapper.getFilterOptionsInSpanish();
-  const { species: speciesOptions, gender: genderOptions, status: statusOptions } = filterOptions;
 
   const handleFilterToggle = (category: keyof UIFilterState, value: string) => {
     setLocalFilters(prev => ({
       ...prev,
       [category]: prev[category].includes(value)
-        ? prev[category].filter((item: string) => item !== value)
+        ? prev[category].filter(item => item !== value)
         : [...prev[category], value]
     }));
+  };
+
+  const clearFilters = () => {
+    setLocalFilters({
+      species: [],
+      gender: [],
+      status: [],
+    });
   };
 
   const handleApplyFilters = () => {
@@ -152,19 +148,52 @@ const FilterModal = ({ open, onClose, onApplyFilters }: FilterModalProps) => {
     onClose();
   };
 
-  const handleClearFilters = () => {
-    setLocalFilters({
-      species: [],
-      gender: [],
-      status: [],
-    });
+  // Get filter options from mapper
+  const filterOptions = {
+    species: CharacterMapper.getFilterOptionsInSpanish().species,
+    gender: CharacterMapper.getFilterOptionsInSpanish().gender,
+    status: CharacterMapper.getFilterOptionsInSpanish().status,
   };
 
-  const hasActiveLocalFilters = localFilters.species.length > 0 || 
-                               localFilters.gender.length > 0 || 
-                               localFilters.status.length > 0;
+  // Count active filters
+  const totalActiveFilters = localFilters.species.length + localFilters.gender.length + localFilters.status.length;
+
+  // Touch handlers for mobile drag functionality
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (window.innerWidth > 600) return; // Only on mobile
+    
+    setStartY(e.touches[0].clientY);
+    setIsDragging(true);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging || window.innerWidth > 600) return;
+    
+    const currentY = e.touches[0].clientY;
+    const deltaY = currentY - startY;
+    
+    // Only allow dragging down
+    if (deltaY > 0) {
+      setDragY(deltaY);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (!isDragging || window.innerWidth > 600) return;
+    
+    setIsDragging(false);
+    
+    // If dragged down more than 100px, close modal
+    if (dragY > 100) {
+      onClose();
+    }
+    
+    // Reset drag position
+    setDragY(0);
+  };
 
   const handleClose = () => {
+    if (isDragging) return; // Don't close if currently dragging
     onClose();
   };
 
@@ -175,268 +204,342 @@ const FilterModal = ({ open, onClose, onApplyFilters }: FilterModalProps) => {
       aria-labelledby="filter-modal-title"
       sx={{
         display: 'flex',
-        alignItems: 'center',
+        alignItems: { xs: 'flex-end', sm: 'center' },
         justifyContent: 'center',
-        padding: 2,
+        padding: { xs: 0, sm: 2 },
       }}
     >
       <Box
+        ref={modalRef}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
         sx={{
           backgroundColor: '#ffffff',
-          borderRadius: '16px',
-          padding: { xs: '24px', sm: '32px' },
-          maxWidth: '600px',
+          borderRadius: { xs: '24px 24px 0 0', sm: '16px' },
+          maxWidth: { xs: '100vw', sm: '600px' },
           width: '100%',
-          maxHeight: '80vh',
-          overflow: 'auto',
+          maxHeight: { xs: '85vh', sm: '80vh' },
           boxShadow: '0px 8px 32px rgba(0, 0, 0, 0.12)',
           position: 'relative',
           outline: 'none',
+          transform: { xs: `translateY(${dragY}px)`, sm: 'none' },
+          transition: isDragging ? 'none' : 'transform 0.3s ease-out',
+          display: 'flex',
+          flexDirection: 'column',
         }}
       >
-        {/* Header */}
+        {/* Fixed Header Section */}
         <Box
           sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: '24px',
+            flexShrink: 0,
+            padding: { xs: '0 24px', sm: '32px 32px 0 32px' },
           }}
         >
-          <Typography
-            id="filter-modal-title"
-            variant="h6"
+          {/* Mobile drag handle */}
+          <Box
             sx={{
-              fontFamily: 'Montserrat, sans-serif',
-              fontWeight: 600,
-              fontSize: '18px',
-              color: '#333333',
-              margin: 0,
+              display: { xs: 'flex', sm: 'none' },
+              justifyContent: 'center',
+              paddingTop: '12px',
+              paddingBottom: '8px',
             }}
           >
-            Filtros avanzados
-          </Typography>
-          
-          <IconButton
-            onClick={handleClose}
-            sx={{
-              padding: '4px',
-              color: '#666666',
-              '&:hover': {
-                backgroundColor: '#f5f5f5',
-              },
-            }}
-          >
-            <CloseIcon sx={{ fontSize: '20px' }} />
-          </IconButton>
-        </Box>
-
-        {/* Species Filter */}
-        <Box sx={{ marginBottom: '24px' }}>
-          <Typography
-            variant="subtitle2"
-            sx={{
-              fontFamily: 'Montserrat, sans-serif',
-              fontWeight: 500,
-              fontSize: '14px',
-              color: '#333333',
-              marginBottom: '12px',
-            }}
-          >
-            Especie
-          </Typography>
-          <Box sx={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {speciesOptions.map((species) => (
-              <Box
-                key={species}
-                onClick={() => handleFilterToggle('species', species)}
-                sx={{ cursor: 'pointer' }}
-              >
-                <Badge
-                  sx={localFilters.species.includes(species) ? {
-                    backgroundColor: '#C7CBC2',
-                    color: '#333333',
-                    border: '1px solid #B5BAB0',
-                    fontFamily: 'Montserrat',
-                    fontWeight: 500,
-                    fontSize: '14px',
-                    lineHeight: '20px',
-                    textAlign: 'center',
-                    '&:hover': {
-                      backgroundColor: '#B5BAB0',
-                    },
-                  } : {
-                    backgroundColor: 'transparent',
-                    color: '#666666',
-                    border: '1px solid #e0e0e0',
-                    fontFamily: 'Montserrat',
-                    fontWeight: 500,
-                    fontSize: '14px',
-                    lineHeight: '20px',
-                    textAlign: 'center',
-                    '&:hover': {
-                      backgroundColor: '#f5f5f5',
-                    },
-                  }}
-                >
-                  {species}
-                </Badge>
-              </Box>
-            ))}
-          </Box>
-        </Box>
-
-        {/* Gender Filter */}
-        <Box sx={{ marginBottom: '24px' }}>
-          <Typography
-            variant="subtitle2"
-            sx={{
-              fontFamily: 'Montserrat, sans-serif',
-              fontWeight: 500,
-              fontSize: '14px',
-              color: '#333333',
-              marginBottom: '12px',
-            }}
-          >
-            Género
-          </Typography>
-          <Box sx={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {genderOptions.map((gender) => (
-              <Box
-                key={gender}
-                onClick={() => handleFilterToggle('gender', gender)}
-                sx={{ cursor: 'pointer' }}
-              >
-                <Badge
-                  sx={localFilters.gender.includes(gender) ? {
-                    backgroundColor: '#C7CBC2',
-                    color: '#333333',
-                    border: '1px solid #B5BAB0',
-                    fontFamily: 'Montserrat',
-                    fontWeight: 500,
-                    fontSize: '14px',
-                    lineHeight: '20px',
-                    textAlign: 'center',
-                    '&:hover': {
-                      backgroundColor: '#B5BAB0',
-                    },
-                  } : {
-                    backgroundColor: 'transparent',
-                    color: '#666666',
-                    border: '1px solid #e0e0e0',
-                    fontFamily: 'Montserrat',
-                    fontWeight: 500,
-                    fontSize: '14px',
-                    lineHeight: '20px',
-                    textAlign: 'center',
-                    '&:hover': {
-                      backgroundColor: '#f5f5f5',
-                    },
-                  }}
-                >
-                  {gender}
-                </Badge>
-              </Box>
-            ))}
-          </Box>
-        </Box>
-
-        {/* Status Filter */}
-        <Box sx={{ marginBottom: '32px' }}>
-          <Typography
-            variant="subtitle2"
-            sx={{
-              fontFamily: 'Montserrat, sans-serif',
-              fontWeight: 500,
-              fontSize: '14px',
-              color: '#333333',
-              marginBottom: '12px',
-            }}
-          >
-            Estado
-          </Typography>
-          <Box sx={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {statusOptions.map((status) => (
-              <Box
-                key={status}
-                onClick={() => handleFilterToggle('status', status)}
-                sx={{ cursor: 'pointer' }}
-              >
-                <Badge
-                  sx={localFilters.status.includes(status) ? {
-                    backgroundColor: '#C7CBC2',
-                    color: '#333333',
-                    border: '1px solid #B5BAB0',
-                    fontFamily: 'Montserrat',
-                    fontWeight: 500,
-                    fontSize: '14px',
-                    lineHeight: '20px',
-                    textAlign: 'center',
-                    '&:hover': {
-                      backgroundColor: '#B5BAB0',
-                    },
-                  } : {
-                    backgroundColor: 'transparent',
-                    color: '#666666',
-                    border: '1px solid #e0e0e0',
-                    fontFamily: 'Montserrat',
-                    fontWeight: 500,
-                    fontSize: '14px',
-                    lineHeight: '20px',
-                    textAlign: 'center',
-                    '&:hover': {
-                      backgroundColor: '#f5f5f5',
-                    },
-                  }}
-                >
-                  {status}
-                </Badge>
-              </Box>
-            ))}
-          </Box>
-        </Box>
-
-        {/* Action Buttons */}
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginTop: '24px',
-            gap: '12px',
-          }}
-        >
-          {/* Clear Filters Button */}
-          {hasActiveLocalFilters && (
             <Box
-              component="button"
-              onClick={handleClearFilters}
               sx={{
-                background: 'none',
-                border: 'none',
-                color: '#666666',
-                fontSize: '14px',
+                width: '32px',
+                height: '4px',
+                backgroundColor: '#E0E0E0',
+                borderRadius: '2px',
+              }}
+            />
+          </Box>
+
+          {/* Header */}
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: { xs: '16px', sm: '24px' },
+              paddingTop: { xs: '16px', sm: '0' },
+            }}
+          >
+            <Typography
+              id="filter-modal-title"
+              variant="h6"
+              sx={{
                 fontFamily: 'Montserrat, sans-serif',
-                cursor: 'pointer',
-                padding: '8px 0',
+                fontWeight: 600,
+                color: '#1A1A1A',
+                fontSize: { xs: '20px', sm: '24px' },
+              }}
+            >
+              Filtros
+            </Typography>
+            <IconButton
+              onClick={onClose}
+              sx={{
+                color: '#666666',
+                padding: '8px',
                 '&:hover': {
-                  color: '#333333',
+                  backgroundColor: '#f5f5f5',
                 },
               }}
             >
-              Limpiar filtros
+              <CloseIcon />
+            </IconButton>
+          </Box>
+        </Box>
+
+        {/* Scrollable Content */}
+        <Box
+          sx={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: { xs: '0 24px', sm: '0 32px' },
+            '&::-webkit-scrollbar': {
+              width: '6px',
+            },
+            '&::-webkit-scrollbar-track': {
+              backgroundColor: '#f1f1f1',
+              borderRadius: '3px',
+            },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: '#c1c1c1',
+              borderRadius: '3px',
+              '&:hover': {
+                backgroundColor: '#a8a8a8',
+              },
+            },
+          }}
+        >
+          {/* Species Filter */}
+          <Box sx={{ marginBottom: '24px' }}>
+            <Typography
+              variant="subtitle1"
+              sx={{
+                fontFamily: 'Montserrat, sans-serif',
+                fontWeight: 600,
+                color: '#1A1A1A',
+                marginBottom: '12px',
+                fontSize: '16px',
+              }}
+            >
+              Especies
+            </Typography>
+            <Box sx={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {filterOptions.species.map((species) => (
+                <Box
+                  key={species}
+                  onClick={() => handleFilterToggle('species', species)}
+                  sx={{
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      transform: 'translateY(-1px)',
+                    },
+                  }}
+                >
+                  <Badge
+                    sx={{
+                      fontFamily: 'Montserrat, sans-serif',
+                      fontWeight: localFilters.species.includes(species) ? 600 : 400,
+                      backgroundColor: localFilters.species.includes(species) 
+                        ? '#8BC547' 
+                        : '#f5f5f5',
+                      color: localFilters.species.includes(species) 
+                        ? '#ffffff' 
+                        : '#666666',
+                      border: localFilters.species.includes(species) 
+                        ? '1px solid #8BC547' 
+                        : '1px solid #e0e0e0',
+                      '&:hover': {
+                        backgroundColor: localFilters.species.includes(species) 
+                          ? '#7AB33D' 
+                          : '#eeeeee',
+                        borderColor: localFilters.species.includes(species) 
+                          ? '#7AB33D' 
+                          : '#d0d0d0',
+                      },
+                    }}
+                  >
+                    {species}
+                  </Badge>
+                </Box>
+              ))}
             </Box>
-          )}
-          
-          {/* Apply Button */}
-          <Button onClick={handleApplyFilters}
+          </Box>
+
+          {/* Gender Filter */}
+          <Box sx={{ marginBottom: '24px' }}>
+            <Typography
+              variant="subtitle1"
+              sx={{
+                fontFamily: 'Montserrat, sans-serif',
+                fontWeight: 600,
+                color: '#1A1A1A',
+                marginBottom: '12px',
+                fontSize: '16px',
+              }}
+            >
+              Géneros
+            </Typography>
+            <Box sx={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {filterOptions.gender.map((gender) => (
+                <Box
+                  key={gender}
+                  onClick={() => handleFilterToggle('gender', gender)}
+                  sx={{
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      transform: 'translateY(-1px)',
+                    },
+                  }}
+                >
+                  <Badge
+                    sx={{
+                      fontFamily: 'Montserrat, sans-serif',
+                      fontWeight: localFilters.gender.includes(gender) ? 600 : 400,
+                      backgroundColor: localFilters.gender.includes(gender) 
+                        ? '#8BC547' 
+                        : '#f5f5f5',
+                      color: localFilters.gender.includes(gender) 
+                        ? '#ffffff' 
+                        : '#666666',
+                      border: localFilters.gender.includes(gender) 
+                        ? '1px solid #8BC547' 
+                        : '1px solid #e0e0e0',
+                      '&:hover': {
+                        backgroundColor: localFilters.gender.includes(gender) 
+                          ? '#7AB33D' 
+                          : '#eeeeee',
+                        borderColor: localFilters.gender.includes(gender) 
+                          ? '#7AB33D' 
+                          : '#d0d0d0',
+                      },
+                    }}
+                  >
+                    {gender}
+                  </Badge>
+                </Box>
+              ))}
+            </Box>
+          </Box>
+
+          {/* Status Filter */}
+          <Box sx={{ marginBottom: '24px' }}>
+            <Typography
+              variant="subtitle1"
+              sx={{
+                fontFamily: 'Montserrat, sans-serif',
+                fontWeight: 600,
+                color: '#1A1A1A',
+                marginBottom: '12px',
+                fontSize: '16px',
+              }}
+            >
+              Estados
+            </Typography>
+            <Box sx={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {filterOptions.status.map((status) => (
+                <Box
+                  key={status}
+                  onClick={() => handleFilterToggle('status', status)}
+                  sx={{
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      transform: 'translateY(-1px)',
+                    },
+                  }}
+                >
+                  <Badge
+                    sx={{
+                      fontFamily: 'Montserrat, sans-serif',
+                      fontWeight: localFilters.status.includes(status) ? 600 : 400,
+                      backgroundColor: localFilters.status.includes(status) 
+                        ? '#8BC547' 
+                        : '#f5f5f5',
+                      color: localFilters.status.includes(status) 
+                        ? '#ffffff' 
+                        : '#666666',
+                      border: localFilters.status.includes(status) 
+                        ? '1px solid #8BC547' 
+                        : '1px solid #e0e0e0',
+                      '&:hover': {
+                        backgroundColor: localFilters.status.includes(status) 
+                          ? '#7AB33D' 
+                          : '#eeeeee',
+                        borderColor: localFilters.status.includes(status) 
+                          ? '#7AB33D' 
+                          : '#d0d0d0',
+                      },
+                    }}
+                  >
+                    {status}
+                  </Badge>
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        </Box>
+
+        {/* Fixed Footer Section */}
+        <Box
+          sx={{
+            flexShrink: 0,
+            padding: { xs: '24px', sm: '24px 32px 32px 32px' },
+            borderTop: '1px solid #f0f0f0',
+            backgroundColor: '#ffffff',
+          }}
+        >
+          <Box
             sx={{
-              width: '148px',
-              marginLeft: 'auto',
+              display: 'flex',
+              flexDirection: { xs: 'column-reverse', sm: 'row' },
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: { xs: '12px', sm: '16px' },
             }}
           >
-            Aplicar filtros
-          </Button>
+            {/* Clear Filters Button */}
+            {totalActiveFilters > 0 && (
+              <Button
+                onClick={clearFilters}
+                sx={{
+                  backgroundColor: 'transparent',
+                  color: '#666666',
+                  fontFamily: 'Montserrat, sans-serif',
+                  fontWeight: 500,
+                  fontSize: '14px',
+                  padding: '8px 16px',
+                  minHeight: '40px',
+                  width: { xs: '100%', sm: 'auto' },
+                  order: { xs: 2, sm: 1 },
+                  '&:hover': {
+                    backgroundColor: '#f5f5f5',
+                    color: '#333333',
+                  },
+                }}
+              >
+                Limpiar filtros
+              </Button>
+            )}
+            
+            {/* Apply Button */}
+            <Button 
+              onClick={handleApplyFilters}
+              sx={{
+                width: { xs: '100%', sm: '148px' },
+                marginLeft: { xs: '0', sm: 'auto' },
+                order: { xs: 1, sm: 2 },
+              }}
+            >
+              Aplicar filtros
+            </Button>
+          </Box>
         </Box>
       </Box>
     </Modal>
