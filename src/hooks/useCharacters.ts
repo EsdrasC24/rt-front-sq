@@ -122,6 +122,8 @@ export const useCharacters = (initialFilters: CharacterFilters = {}): UseCharact
       const allIds = new Set<number>(); // To prevent duplicates
       let totalCount = 0;
       let hasNext = false;
+      let lastError: Error | null = null;
+      let successfulCombinations = 0;
 
       // Fetch for each filter combination
       for (const filterSet of filterCombinations) {
@@ -144,10 +146,21 @@ export const useCharacters = (initialFilters: CharacterFilters = {}): UseCharact
 
           totalCount = Math.max(totalCount, response.info.count);
           hasNext = hasNext || !!response.info.next;
+          successfulCombinations++;
         } catch (combError) {
-          // If one combination fails, continue with others
-          console.warn('Filter combination failed:', filterSet, combError);
+          // Store the last error for potential use
+          lastError = combError instanceof Error ? combError : new Error('Unknown error');
+          
+          // Only log actual errors, not aborts
+          if (!(combError instanceof Error) || combError.name !== 'AbortError') {
+            console.warn('Filter combination failed:', filterSet, combError);
+          }
         }
+      }
+
+      // If no combinations were successful, throw the last error
+      if (successfulCombinations === 0 && lastError) {
+        throw lastError;
       }
 
       setState(prev => ({
@@ -155,7 +168,7 @@ export const useCharacters = (initialFilters: CharacterFilters = {}): UseCharact
         characters: append ? [...prev.characters, ...allCharacters] : allCharacters,
         loading: false,
         hasMore: hasNext,
-        totalCount: allCharacters.length,
+        totalCount: totalCount,
         currentPage: page,
       }));
 
@@ -179,7 +192,7 @@ export const useCharacters = (initialFilters: CharacterFilters = {}): UseCharact
   const searchCharacters = useCallback(async (name: string) => {
     const filters: CharacterFilters = { ...currentFiltersRef.current, name };
     await fetchCharacters(filters, 1, false);
-  }, []);
+  }, [fetchCharacters]);
 
   /**
    * Load more characters (pagination)
@@ -191,7 +204,7 @@ export const useCharacters = (initialFilters: CharacterFilters = {}): UseCharact
 
     const nextPage = state.currentPage + 1;
     await fetchCharacters(currentFiltersRef.current, nextPage, true);
-  }, [state.hasMore, state.loading, state.currentPage]);
+  }, [state.hasMore, state.loading, state.currentPage, fetchCharacters]);
 
   /**
    * Reset characters list
@@ -214,14 +227,14 @@ export const useCharacters = (initialFilters: CharacterFilters = {}): UseCharact
    */
   const refreshCharacters = useCallback(async () => {
     await fetchCharacters(currentFiltersRef.current, 1, false);
-  }, []);
+  }, [fetchCharacters]);
 
   /**
    * Wrapper for fetchCharacters to match interface
    */
   const fetchCharactersWrapper = useCallback(async (filters?: CharacterFilters, page?: number) => {
     await fetchCharacters(filters || {}, page || 1, false);
-  }, []);
+  }, [fetchCharacters]);
 
   /**
    * Initial load effect
@@ -229,7 +242,7 @@ export const useCharacters = (initialFilters: CharacterFilters = {}): UseCharact
   useEffect(() => {
     fetchCharacters(initialFilters);
     return cleanup;
-  }, []); // Solo ejecutar una vez al montar el componente
+  }, [fetchCharacters, cleanup]); // Incluir dependencias
 
   return {
     ...state,
